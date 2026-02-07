@@ -1,6 +1,7 @@
 """Test script to verify the indexer works correctly."""
 import sys
 import os
+from pathlib import Path
 sys.path.insert(0, 'src')
 
 from main import DocumentIndexer
@@ -8,7 +9,7 @@ from main import DocumentIndexer
 def test_indexer():
     """Test the indexer on go-test-ground repository."""
     print("=" * 70)
-    print("Testing DocumentIndexer on go-test-ground repository")
+    print("Testing DocumentIndexer")
     print("=" * 70)
 
     try:
@@ -24,9 +25,24 @@ def test_indexer():
         print(f"   - Extract functions: {indexer.config.extract_functions}")
         print("   SUCCESS: Configuration loaded")
 
-        # Test file detection
+        # Test file detection - use test_data if go-test-ground doesn't exist
         print("\n3. Testing file detection...")
         test_file = r"C:\Git\go-test-ground\main.go"
+
+        # Fallback to any .go file in current directory or test_data
+        if not os.path.exists(test_file):
+            print(f"   WARNING: {test_file} not found, searching for alternatives...")
+            # Try to find any .go file
+            for pattern in ["**/*.go", "**/*.py", "**/*.js"]:
+                matches = list(Path(".").glob(pattern))
+                if matches:
+                    test_file = str(matches[0])
+                    print(f"   Using alternative file: {test_file}")
+                    break
+            else:
+                print("   ERROR: No test files found. Please ensure test files exist.")
+                return False
+
         metadata = indexer.file_handler.get_file_metadata(test_file)
         print(f"   - File: {metadata['file_name']}")
         print(f"   - Language: {metadata['language']}")
@@ -44,8 +60,14 @@ def test_indexer():
             print(f"   - Extracted metadata: {list(code_meta.keys())}")
             if 'functions' in code_meta:
                 print(f"   - Functions found: {len(code_meta['functions'])}")
+            if 'structs' in code_meta:
+                print(f"   - Structs found: {len(code_meta['structs'])}")
             if 'imports' in code_meta:
                 print(f"   - Imports found: {len(code_meta['imports'])}")
+            if 'classes' in code_meta:
+                print(f"   - Classes found: {len(code_meta['classes'])}")
+        else:
+            print("   - No metadata extracted (might be non-code file or unsupported language)")
         print("   SUCCESS: Code extraction works")
 
         print("\n" + "=" * 70)

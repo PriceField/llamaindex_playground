@@ -1,0 +1,29 @@
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+[tool.pylint.messages_control]
+max-line-length = 88
+disable = ["C0111", "C0103"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=html --cov-report=term"
+
+[project]
+name = "llamaindex_playground"
+version = "0.1.0"
+description = "LlamaIndex-based project for handling business logic with Claude"
+requires-python = ">=3.11"
+dependencies = [
+    "llama-index",
+    "llama-index-core",
+    "llama-index-llms-anthropic",
+    "llama-index-embeddings-huggingface",
+    "chromadb",
+    "python-dotenv",
+    "requests"
+]
+
+[project.optional-dependencies]
+dev = ["black", "pylint", "pytest", "pytest-cov"]

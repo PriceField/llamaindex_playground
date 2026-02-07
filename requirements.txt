@@ -1,0 +1,20 @@
+# LlamaIndex Core
+llama-index
+llama-index-core
+llama-index-llms-openai
+llama-index-embeddings-openai
+llama-index-embeddings-huggingface
+
+# Vector Store
+chromadb
+
+# Development Tools
+black
+pylint
+pytest
+pytest-cov
+
+# Utilities
+python-dotenv
+requests
+gitpython
