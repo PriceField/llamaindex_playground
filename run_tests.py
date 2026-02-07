@@ -2,9 +2,8 @@
 import sys
 import os
 import subprocess
-from pathlib import Path
 
-def run_test(test_file, description):
+def run_test(test_file: str, description: str) -> bool:
     """Run a single test file and report results.
 
     Args:
@@ -49,7 +48,7 @@ def main():
         ("test_query.py", "Integration Test - Query indexed repository"),
     ]
 
-    results = {}
+    results: dict[str, bool | None] = {}
 
     # Run core tests
     print("\n[CORE TESTS]")

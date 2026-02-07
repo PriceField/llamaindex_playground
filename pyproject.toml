@@ -18,11 +18,13 @@ requires-python = ">=3.11"
 dependencies = [
     "llama-index",
     "llama-index-core",
-    "llama-index-llms-anthropic",
+    "llama-index-llms-openai",
+    "llama-index-embeddings-openai",
     "llama-index-embeddings-huggingface",
     "chromadb",
     "python-dotenv",
-    "requests"
+    "requests",
+    "gitpython"
 ]
 
 [project.optional-dependencies]

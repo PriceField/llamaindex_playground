@@ -25,25 +25,25 @@ def test_indexer():
         print(f"   - Extract functions: {indexer.config.extract_functions}")
         print("   SUCCESS: Configuration loaded")
 
-        # Test file detection - use test_data if go-test-ground doesn't exist
+        # Test file detection using test_data directory
         print("\n3. Testing file detection...")
-        test_file = r"C:\Git\go-test-ground\main.go"
+        test_file = Path("test_data/sample_code/calculator.py")
 
-        # Fallback to any .go file in current directory or test_data
-        if not os.path.exists(test_file):
+        # Fallback to any code file in test_data or current directory
+        if not test_file.exists():
             print(f"   WARNING: {test_file} not found, searching for alternatives...")
-            # Try to find any .go file
-            for pattern in ["**/*.go", "**/*.py", "**/*.js"]:
+            # Try to find any code file in test_data first, then current directory
+            for pattern in ["test_data/**/*.py", "test_data/**/*.js", "test_data/**/*.go", "**/*.py", "**/*.js"]:
                 matches = list(Path(".").glob(pattern))
                 if matches:
-                    test_file = str(matches[0])
+                    test_file = matches[0]
                     print(f"   Using alternative file: {test_file}")
                     break
             else:
-                print("   ERROR: No test files found. Please ensure test files exist.")
+                print("   ERROR: No test files found. Please ensure test files exist in test_data/.")
                 return False
 
-        metadata = indexer.file_handler.get_file_metadata(test_file)
+        metadata = indexer.file_handler.get_file_metadata(str(test_file))
         print(f"   - File: {metadata['file_name']}")
         print(f"   - Language: {metadata['language']}")
         print(f"   - Category: {metadata['category']}")
@@ -51,10 +51,10 @@ def test_indexer():
 
         # Test code extraction
         print("\n4. Testing code metadata extraction...")
-        with open(test_file, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(str(test_file), 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         code_meta = indexer.code_extractor.extract_metadata(
-            test_file, content, metadata['language']
+            str(test_file), content, metadata['language']
         )
         if code_meta:
             print(f"   - Extracted metadata: {list(code_meta.keys())}")
