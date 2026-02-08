@@ -1,6 +1,5 @@
 """Centralized configuration management for document indexing."""
 from pathlib import Path
-from typing import List, Dict
 import os
 from dotenv import load_dotenv
 
@@ -78,7 +77,7 @@ class IndexerConfig:
         value = value.split('#')[0].strip()
         return value.lower() == "true"
 
-    def _parse_list(self, value: str) -> List[str]:
+    def _parse_list(self, value: str) -> list[str]:
         """Parse comma-separated list from env var, stripping inline comments.
 
         Args:
@@ -91,7 +90,7 @@ class IndexerConfig:
         value = value.split('#')[0].strip()
         return [item.strip() for item in value.split(",") if item.strip()]
 
-    def _build_language_extensions(self) -> Dict[str, List[str]]:
+    def _build_language_extensions(self) -> dict[str, list[str]]:
         """Map languages to file extensions."""
         return {
             "csharp": [".cs"],
@@ -110,7 +109,7 @@ class IndexerConfig:
             "scala": [".scala"],
         }
 
-    def _build_file_categories(self) -> Dict[str, List[str]]:
+    def _build_file_categories(self) -> dict[str, list[str]]:
         """Categorize file types."""
         return {
             "documentation": [".md", ".rst", ".txt", ".adoc"],

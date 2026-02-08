@@ -1,5 +1,4 @@
 """Enhanced query engine for code search."""
-from typing import Optional
 from llama_index.core import VectorStoreIndex
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -23,10 +22,10 @@ class CodeQueryEngine:
 
     def create_query_engine(
         self,
-        similarity_top_k: Optional[int] = None,
-        language_filter: Optional[str] = None,
-        category_filter: Optional[str] = None,
-        file_pattern: Optional[str] = None,
+        similarity_top_k: int | None = None,
+        language_filter: str | None = None,
+        category_filter: str | None = None,
+        file_pattern: str | None = None,
     ):
         """Create query engine with optional metadata filters.
 

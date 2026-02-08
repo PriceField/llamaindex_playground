@@ -1,6 +1,5 @@
 """Smart file type detection and handling."""
 from pathlib import Path
-from typing import List, Optional, Dict
 import re
 
 
@@ -16,8 +15,8 @@ class FileHandler:
         self.config = config
 
     def should_index_file(self, file_path: str,
-                          user_extensions: Optional[List[str]] = None,
-                          user_exclude: Optional[List[str]] = None) -> bool:
+                          user_extensions: list[str] | None = None,
+                          user_exclude: list[str] | None = None) -> bool:
         """Determine if a file should be indexed.
 
         Args:
@@ -65,7 +64,7 @@ class FileHandler:
             # Direct substring match
             return pattern in path
 
-    def get_file_metadata(self, file_path: str) -> Dict[str, str]:
+    def get_file_metadata(self, file_path: str) -> dict[str, str]:
         """Extract basic file metadata.
 
         Args:

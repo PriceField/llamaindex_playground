@@ -1,5 +1,4 @@
 """Code-aware chunking strategies."""
-from typing import List, Tuple
 from llama_index.core import Document
 from llama_index.core.node_parser import NodeParser
 from llama_index.core.schema import BaseNode, TextNode
@@ -28,10 +27,10 @@ class CodeAwareNodeParser(NodeParser):
 
     def _parse_nodes(
         self,
-        nodes: List[BaseNode],
+        nodes: list[BaseNode],
         show_progress: bool = False,
         **kwargs
-    ) -> List[BaseNode]:
+    ) -> list[BaseNode]:
         """Parse nodes with code-aware chunking.
 
         Args:
@@ -62,7 +61,7 @@ class CodeAwareNodeParser(NodeParser):
 
         return all_nodes
 
-    def _chunk_code(self, document: Document, language: str) -> List[TextNode]:
+    def _chunk_code(self, document: Document, language: str) -> list[TextNode]:
         """Chunk code preserving function/class boundaries.
 
         Args:
@@ -102,7 +101,7 @@ class CodeAwareNodeParser(NodeParser):
 
         return nodes
 
-    def _chunk_python(self, content: str) -> List[Tuple[str, int, int]]:
+    def _chunk_python(self, content: str) -> list[tuple[str, int, int]]:
         """Chunk Python code by functions and classes.
 
         Args:
@@ -165,7 +164,7 @@ class CodeAwareNodeParser(NodeParser):
 
         return chunks if chunks else [(content, 1, len(lines))]
 
-    def _chunk_javascript(self, content: str) -> List[Tuple[str, int, int]]:
+    def _chunk_javascript(self, content: str) -> list[tuple[str, int, int]]:
         """Chunk JavaScript/TypeScript code by functions and classes.
 
         Args:
@@ -216,7 +215,7 @@ class CodeAwareNodeParser(NodeParser):
 
         return chunks if chunks else [(content, 1, len(lines))]
 
-    def _chunk_java(self, content: str) -> List[Tuple[str, int, int]]:
+    def _chunk_java(self, content: str) -> list[tuple[str, int, int]]:
         """Chunk Java code by methods and classes.
 
         Args:
@@ -228,7 +227,7 @@ class CodeAwareNodeParser(NodeParser):
         # Reuse JavaScript chunking logic (similar brace-based structure)
         return self._chunk_javascript(content)
 
-    def _chunk_generic(self, document: Document) -> List[TextNode]:
+    def _chunk_generic(self, document: Document) -> list[TextNode]:
         """Generic chunking for non-code files.
 
         Args:

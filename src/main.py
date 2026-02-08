@@ -6,7 +6,6 @@ import time
 import signal
 import shutil
 from pathlib import Path
-from typing import Optional, List, Tuple
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -202,7 +201,7 @@ class DocumentIndexer:
         """
         self.index_name = index_name
         self.storage_dir = Path("storage") / index_name
-        self.index: Optional[VectorStoreIndex] = None
+        self.index: VectorStoreIndex | None = None
         self.require_llm = require_llm
 
         # Validate environment variables before proceeding
@@ -245,7 +244,7 @@ class DocumentIndexer:
         Settings.node_parser = CodeAwareNodeParser(self.config)
         print("[OK] Code-aware chunking enabled")
 
-    def _load_document_with_metadata(self, file_path: str) -> Optional[Document]:
+    def _load_document_with_metadata(self, file_path: str) -> Document | None:
         """Load a document with enhanced code-aware metadata.
 
         Args:
@@ -318,8 +317,8 @@ class DocumentIndexer:
     def index_directory(
         self,
         directory: str,
-        file_extensions: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
+        file_extensions: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
         recursive: bool = True,
         batch_size: int = 10,
         autosave_interval: int = 60,
@@ -504,9 +503,9 @@ class DocumentIndexer:
                 tracker.save()
             raise
 
-    def query(self, question: str, top_k: Optional[int] = None,
-              language: Optional[str] = None,
-              category: Optional[str] = None):
+    def query(self, question: str, top_k: int | None = None,
+              language: str | None = None,
+              category: str | None = None):
         """Query the index with code-aware search.
 
         Args:
@@ -577,7 +576,7 @@ class DocumentIndexer:
 # INTERACTIVE MODE - Main Entry Point
 # ============================================================================
 
-def list_available_indexes() -> List[str]:
+def list_available_indexes() -> list[str]:
     """List all available index names in the storage directory.
 
     Returns:
@@ -595,7 +594,7 @@ def list_available_indexes() -> List[str]:
     return sorted(indexes)
 
 
-def select_index_by_number(available_indexes: List[str]) -> Optional[str]:
+def select_index_by_number(available_indexes: list[str]) -> str | None:
     """Display numbered list of indexes and let user select or create new.
 
     Args:
@@ -651,9 +650,9 @@ def select_index_by_number(available_indexes: List[str]) -> Optional[str]:
             return None
 
 
-def prompt_for_filters(current_language: Optional[str] = None,
-                      current_category: Optional[str] = None,
-                      current_top_k: Optional[int] = None) -> Tuple[Optional[str], Optional[str], Optional[int]]:
+def prompt_for_filters(current_language: str | None = None,
+                      current_category: str | None = None,
+                      current_top_k: int | None = None) -> tuple[str | None, str | None, int | None]:
     """Prompt user for query filters with current values shown.
 
     Args:

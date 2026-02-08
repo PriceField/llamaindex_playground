@@ -1,5 +1,4 @@
 """Extract code-specific metadata from source files."""
-from typing import Dict, List
 import re
 
 
@@ -14,7 +13,7 @@ class CodeMetadataExtractor:
         """
         self.config = config
 
-    def extract_metadata(self, file_path: str, content: str, language: str) -> Dict:
+    def extract_metadata(self, file_path: str, content: str, language: str) -> dict:
         """Extract code metadata based on language.
 
         Args:
@@ -43,7 +42,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_python_metadata(self, content: str) -> Dict:
+    def _extract_python_metadata(self, content: str) -> dict:
         """Extract Python-specific metadata.
 
         Args:
@@ -90,7 +89,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_javascript_metadata(self, content: str) -> Dict:
+    def _extract_javascript_metadata(self, content: str) -> dict:
         """Extract JavaScript/TypeScript metadata.
 
         Args:
@@ -143,7 +142,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_java_metadata(self, content: str) -> Dict:
+    def _extract_java_metadata(self, content: str) -> dict:
         """Extract Java metadata.
 
         Args:
@@ -185,7 +184,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_go_metadata(self, content: str) -> Dict:
+    def _extract_go_metadata(self, content: str) -> dict:
         """Extract Go metadata.
 
         Args:
