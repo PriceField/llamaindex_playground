@@ -314,6 +314,211 @@ class DocumentIndexer:
             print(f"[X] Failed to load index: {e}")
             return False
 
+    def _print_indexing_config(
+        self,
+        directory_path: Path,
+        recursive: bool,
+        batch_size: int,
+        autosave_interval: int,
+        file_extensions: list[str] | None,
+        exclude_patterns: list[str] | None
+    ) -> None:
+        """Print indexing configuration."""
+        print(f"\n[DIR] Indexing directory: {directory_path}")
+        print(f"   Recursive: {recursive}")
+        print(f"   Batch size: {batch_size} files")
+        print(f"   Auto-save: every {autosave_interval} seconds")
+        if file_extensions:
+            print(f"   File types: {', '.join(file_extensions)}")
+        if exclude_patterns:
+            print(f"   Excluding: {', '.join(exclude_patterns)}")
+
+    def _save_config_to_tracker(
+        self,
+        tracker: ProgressTracker,
+        directory_path: Path,
+        file_extensions: list[str] | None,
+        exclude_patterns: list[str] | None,
+        recursive: bool,
+        batch_size: int,
+        autosave_interval: int
+    ) -> None:
+        """Save configuration to progress tracker."""
+        tracker.data["config"] = {
+            "directory": str(directory_path),
+            "file_extensions": file_extensions,
+            "exclude_patterns": exclude_patterns,
+            "recursive": recursive,
+            "batch_size": batch_size,
+            "autosave_interval": autosave_interval
+        }
+
+    def _print_completion_summary(
+        self,
+        tracker: ProgressTracker,
+        total_files: int
+    ) -> None:
+        """Print indexing completion summary."""
+        print("\n[OK] Indexing complete!")
+        print(f"[#] Index stats:")
+        print(f"   Total files: {total_files}")
+        print(f"   Processed: {tracker.data['progress']['processed_files']}")
+        if tracker.data['progress']['error_files']:
+            print(f"   Errors: {len(tracker.data['progress']['error_files'])}")
+        print(f"   Storage: {self.storage_dir}")
+
+    def _scan_files(
+        self,
+        directory_path: Path,
+        recursive: bool,
+        file_extensions: list[str] | None,
+        exclude_patterns: list[str] | None,
+        tracker: ProgressTracker
+    ) -> tuple[list[str], list[str]]:
+        """Scan directory for files and filter out already processed ones.
+
+        Returns:
+            Tuple of (all_file_paths, pending_files)
+        """
+        # Scan directory for all matching files
+        reader = SimpleDirectoryReader(
+            input_dir=str(directory_path),
+            recursive=recursive,
+            required_exts=file_extensions,
+            exclude=exclude_patterns or [],
+        )
+
+        # Get all file paths
+        all_file_paths = []
+        for file_path in reader.iter_data():
+            all_file_paths.append(file_path[0] if isinstance(file_path, tuple) else file_path)
+
+        # Sort for deterministic ordering
+        all_file_paths = sorted(set(str(Path(f).resolve()) for f in reader.input_files))
+
+        # Filter out already processed files
+        pending_files = [f for f in all_file_paths if not tracker.is_processed(f)]
+
+        # Update totals
+        tracker.data["progress"]["total_files"] = len(all_file_paths)
+        tracker.save()
+
+        return all_file_paths, pending_files
+
+    def _confirm_indexing(
+        self,
+        all_file_count: int,
+        pending_file_count: int,
+        processed_count: int
+    ) -> bool:
+        """Prompt user to confirm indexing operation.
+
+        Returns:
+            True if user confirms, False if user aborts
+        """
+        print(f"[OK] Found {all_file_count} total files")
+
+        if processed_count > 0:
+            print(f"[OK] Already indexed: {processed_count} files")
+            print(f"[OK] Pending: {pending_file_count} files")
+
+            if pending_file_count > 0:
+                response = input("\n[>] Resume from checkpoint? (y/n): ").strip().lower()
+                if response != 'y':
+                    print("[X] Aborted")
+                    return False
+            else:
+                print("[i] No files to index")
+                return False
+        else:
+            if pending_file_count == 0:
+                print("[i] No files to index")
+                return False
+
+            response = input(f"\n[>] Start indexing {pending_file_count} files? (y/n): ").strip().lower()
+            if response != 'y':
+                print("[X] Aborted")
+                return False
+
+        return True
+
+    def _setup_signal_handler(self, tracker: ProgressTracker) -> None:
+        """Setup SIGINT handler for graceful shutdown on Ctrl+C.
+
+        Side effects:
+            Registers signal handler that will sys.exit(0) on SIGINT
+        """
+        def signal_handler(sig, frame):
+            print("\n\n[PAUSE]  Interrupted by user")
+            print("[SAVE] Saving progress...")
+            if self.index is not None:
+                self.index.storage_context.persist(persist_dir=str(self.storage_dir))
+            tracker.save()
+            print(f"[OK] Progress saved! {tracker.data['progress']['processed_files']}/{tracker.data['progress']['total_files']} files indexed")
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+
+    def _process_file_batch(
+        self,
+        batch_files: list[str],
+        batch_num: int,
+        total_batches: int,
+        total_files: int,
+        file_extensions: list[str] | None,
+        exclude_patterns: list[str] | None,
+        tracker: ProgressTracker,
+        last_save_time: float,
+        autosave_interval: int
+    ) -> float:
+        """Process a single batch of files.
+
+        Returns:
+            Updated last_save_time
+        """
+        assert self.index is not None, "Index must be initialized before processing batches"
+
+        # Process each file in the batch
+        for file_path in batch_files:
+            try:
+                # Check if file should be indexed
+                if not self.file_handler.should_index_file(file_path, file_extensions, exclude_patterns):
+                    debug_log(f"Skipped (filtered): {file_path}")
+                    continue
+
+                # Load document with enhanced metadata
+                doc = self._load_document_with_metadata(file_path)
+
+                if doc:
+                    # Insert into index
+                    self.index.insert(doc)
+
+                    # Mark as processed
+                    tracker.mark_processed(file_path)
+                    debug_log(f"Processed: {file_path}")
+
+            except Exception as e:
+                print(f"\n[!]  Error processing {Path(file_path).name}: {e}")
+                tracker.mark_error(file_path, str(e))
+                debug_log(f"Error on {file_path}: {e}")
+
+        # Auto-save after batch
+        self.index.storage_context.persist(persist_dir=str(self.storage_dir))
+        tracker.data["progress"]["last_batch_at"] = datetime.now().isoformat()
+        tracker.save()
+
+        # Show progress
+        print(f"   Batch {batch_num}/{total_batches} complete ({tracker.data['progress']['processed_files']}/{total_files} files)")
+
+        # Time-based auto-save check
+        current_time = time.time()
+        if current_time - last_save_time > autosave_interval:
+            tracker.save()
+            last_save_time = current_time
+            debug_log("Time-based auto-save triggered")
+
+        return last_save_time
+
     def index_directory(
         self,
         directory: str,
@@ -339,77 +544,33 @@ class DocumentIndexer:
             print(f"[X] Directory not found: {directory_path}")
             return
 
-        print(f"\n[DIR] Indexing directory: {directory_path}")
-        print(f"   Recursive: {recursive}")
-        print(f"   Batch size: {batch_size} files")
-        print(f"   Auto-save: every {autosave_interval} seconds")
-        if file_extensions:
-            print(f"   File types: {', '.join(file_extensions)}")
-        if exclude_patterns:
-            print(f"   Excluding: {', '.join(exclude_patterns)}")
+        self._print_indexing_config(
+            directory_path, recursive, batch_size, autosave_interval,
+            file_extensions, exclude_patterns
+        )
 
         # Initialize progress tracker
         tracker = ProgressTracker(self.storage_dir)
-        progress = tracker.load()
+        tracker.load()
 
         # Save configuration
-        progress["config"] = {
-            "directory": str(directory_path),
-            "file_extensions": file_extensions,
-            "exclude_patterns": exclude_patterns,
-            "recursive": recursive,
-            "batch_size": batch_size,
-            "autosave_interval": autosave_interval
-        }
+        self._save_config_to_tracker(
+            tracker, directory_path, file_extensions, exclude_patterns,
+            recursive, batch_size, autosave_interval
+        )
 
         print("\n[?] Scanning for files...")
 
         try:
             # Scan directory for all matching files
-            reader = SimpleDirectoryReader(
-                input_dir=str(directory_path),
-                recursive=recursive,
-                required_exts=file_extensions,
-                exclude=exclude_patterns or [],
+            all_file_paths, pending_files = self._scan_files(
+                directory_path, recursive, file_extensions, exclude_patterns, tracker
             )
 
-            # Get all file paths
-            all_file_paths = []
-            for file_path in reader.iter_data():
-                all_file_paths.append(file_path[0] if isinstance(file_path, tuple) else file_path)
-
-            # Sort for deterministic ordering
-            all_file_paths = sorted(set(str(Path(f).resolve()) for f in reader.input_files))
-
-            # Filter out already processed files
-            pending_files = [f for f in all_file_paths if not tracker.is_processed(f)]
-
-            # Update totals
-            progress["progress"]["total_files"] = len(all_file_paths)
-            tracker.save()
-
-            # Show status
-            processed_count = progress["progress"]["processed_files"]
-            print(f"[OK] Found {len(all_file_paths)} total files")
-
-            if processed_count > 0:
-                print(f"[OK] Already indexed: {processed_count} files")
-                print(f"[OK] Pending: {len(pending_files)} files")
-
-                if len(pending_files) > 0:
-                    response = input("\n[>] Resume from checkpoint? (y/n): ").strip().lower()
-                    if response != 'y':
-                        print("[X] Aborted")
-                        return
-            else:
-                if len(pending_files) == 0:
-                    print("[i] No files to index")
-                    return
-
-                response = input(f"\n[>] Start indexing {len(pending_files)} files? (y/n): ").strip().lower()
-                if response != 'y':
-                    print("[X] Aborted")
-                    return
+            # Show status and confirm
+            processed_count = tracker.data["progress"]["processed_files"]
+            if not self._confirm_indexing(len(all_file_paths), len(pending_files), processed_count):
+                return
 
             # Load or create index
             if self.index_exists() and self.index is None:
@@ -424,16 +585,7 @@ class DocumentIndexer:
             assert self.index is not None, "Index must be initialized"
 
             # Setup signal handler for graceful Ctrl+C
-            def signal_handler(sig, frame):
-                print("\n\n[PAUSE]  Interrupted by user")
-                print("[SAVE] Saving progress...")
-                if self.index is not None:
-                    self.index.storage_context.persist(persist_dir=str(self.storage_dir))
-                tracker.save()
-                print(f"[OK] Progress saved! {tracker.data['progress']['processed_files']}/{tracker.data['progress']['total_files']} files indexed")
-                sys.exit(0)
-
-            signal.signal(signal.SIGINT, signal_handler)
+            self._setup_signal_handler(tracker)
 
             # Process files in batches
             print("\n[*] Indexing in progress...")
@@ -443,57 +595,16 @@ class DocumentIndexer:
             for batch_idx in range(0, len(pending_files), batch_size):
                 batch_files = pending_files[batch_idx:batch_idx + batch_size]
                 batch_num = (batch_idx // batch_size) + 1
-
-                # Process each file in the batch
-                for file_path in batch_files:
-                    try:
-                        # Check if file should be indexed
-                        if not self.file_handler.should_index_file(file_path, file_extensions, exclude_patterns):
-                            debug_log(f"Skipped (filtered): {file_path}")
-                            continue
-
-                        # Load document with enhanced metadata
-                        doc = self._load_document_with_metadata(file_path)
-
-                        if doc:
-                            # Insert into index
-                            self.index.insert(doc)
-
-                            # Mark as processed
-                            tracker.mark_processed(file_path)
-                            debug_log(f"Processed: {file_path}")
-
-                    except Exception as e:
-                        print(f"\n[!]  Error processing {Path(file_path).name}: {e}")
-                        tracker.mark_error(file_path, str(e))
-                        debug_log(f"Error on {file_path}: {e}")
-
-                # Auto-save after batch
-                self.index.storage_context.persist(persist_dir=str(self.storage_dir))
-                progress["progress"]["last_batch_at"] = datetime.now().isoformat()
-                tracker.save()
-
-                # Show progress
-                print(f"   Batch {batch_num}/{total_batches} complete ({tracker.data['progress']['processed_files']}/{len(all_file_paths)} files)")
-
-                # Time-based auto-save check
-                current_time = time.time()
-                if current_time - last_save_time > autosave_interval:
-                    tracker.save()
-                    last_save_time = current_time
-                    debug_log("Time-based auto-save triggered")
+                last_save_time = self._process_file_batch(
+                    batch_files, batch_num, total_batches, len(all_file_paths),
+                    file_extensions, exclude_patterns, tracker, last_save_time, autosave_interval
+                )
 
             # Mark complete
             tracker.mark_complete()
 
             # Show summary
-            print("\n[OK] Indexing complete!")
-            print(f"[#] Index stats:")
-            print(f"   Total files: {len(all_file_paths)}")
-            print(f"   Processed: {tracker.data['progress']['processed_files']}")
-            if tracker.data['progress']['error_files']:
-                print(f"   Errors: {len(tracker.data['progress']['error_files'])}")
-            print(f"   Storage: {self.storage_dir}")
+            self._print_completion_summary(tracker, len(all_file_paths))
 
         except Exception as e:
             print(f"\n[X] Error during indexing: {e}")
