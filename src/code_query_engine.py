@@ -5,12 +5,16 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.prompts import PromptTemplate
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from config import IndexerConfig
 
 
 class CodeQueryEngine:
     """Enhanced query engine with code-specific features."""
 
-    def __init__(self, index: VectorStoreIndex, config):
+    def __init__(self, index: VectorStoreIndex, config: "IndexerConfig") -> None:
         """Initialize with index and configuration.
 
         Args:
@@ -26,7 +30,7 @@ class CodeQueryEngine:
         language_filter: str | None = None,
         category_filter: str | None = None,
         file_pattern: str | None = None,
-    ):
+    ) -> RetrieverQueryEngine:
         """Create query engine with optional metadata filters.
 
         Args:
@@ -104,7 +108,7 @@ class CodeQueryEngine:
 
         return PromptTemplate(template)
 
-    def format_response_with_sources(self, response, top_k: int = 5):
+    def format_response_with_sources(self, response: object, top_k: int = 5) -> str:
         """Format response with enhanced source information.
 
         Args:

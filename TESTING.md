@@ -156,7 +156,9 @@ python test_query.py
 
 **Solution:** Ensure all dependencies are installed:
 ```bash
-pip install -r requirements.txt
+make install
+# or
+pip install -e .[dev]
 ```
 
 ## Automated Testing / CI Integration

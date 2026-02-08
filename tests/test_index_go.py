@@ -6,7 +6,7 @@ sys.path.insert(0, 'src')
 
 from main import DocumentIndexer
 
-def test_index_go_repo(auto_confirm=True):
+def test_index_go_repo(auto_confirm: bool = True) -> bool:
     """Index the go-test-ground repository.
 
     Args:

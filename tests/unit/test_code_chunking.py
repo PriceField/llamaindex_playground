@@ -1,10 +1,6 @@
 """Unit tests for code_chunking module."""
-import sys
 import pytest
 from unittest.mock import MagicMock, patch
-
-# Add src to path
-sys.path.insert(0, 'src')
 
 from code_chunking import CodeAwareNodeParser
 from llama_index.core import Document

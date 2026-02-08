@@ -1,12 +1,16 @@
 """Smart file type detection and handling."""
 from pathlib import Path
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from config import IndexerConfig
 
 
 class FileHandler:
     """Handle file type detection and smart exclusions."""
 
-    def __init__(self, config):
+    def __init__(self, config: "IndexerConfig") -> None:
         """Initialize with configuration.
 
         Args:

@@ -1,11 +1,7 @@
 """Unit tests for file_handlers module."""
-import sys
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
-
-# Add src to path
-sys.path.insert(0, 'src')
 
 from file_handlers import FileHandler
 

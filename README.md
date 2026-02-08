@@ -76,8 +76,7 @@ llamaindex_playground/
 ├── data/                # (Create this) Put your documents here
 ├── .env.example         # Environment variables template
 ├── .env                 # (Create this) Your actual API keys
-├── requirements.txt     # Python dependencies
-├── pyproject.toml       # Project configuration
+├── pyproject.toml       # Project configuration (dependencies, tools)
 ├── Makefile            # Common commands
 └── README.md           # This file
 ```

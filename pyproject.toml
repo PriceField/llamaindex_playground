@@ -10,6 +10,34 @@ disable = ["C0111", "C0103"]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=html --cov-report=term"
 
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/node_modules", "**/__pycache__", "venv", ".venv", "build", "dist"]
+ignore = []
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+pythonVersion = "3.11"
+pythonPlatform = "All"
+reportUnusedImport = "warning"
+reportUnusedVariable = "warning"
+reportDuplicateImport = "warning"
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
+reportPrivateUsage = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownParameterType = "none"
+reportUnnecessaryIsInstance = "warning"
+reportUnnecessaryCast = "warning"
+reportImplicitStringConcatenation = "none"
+reportUnsupportedDunderAll = "warning"
+reportUnusedCallResult = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedClassDecorator = "none"
+reportUntypedBaseClass = "none"
+
 [project]
 name = "llamaindex_playground"
 version = "0.1.0"

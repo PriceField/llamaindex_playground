@@ -5,7 +5,7 @@ sys.path.insert(0, 'src')
 
 from main import DocumentIndexer
 
-def test_query(index_name="go_test_index", question=None):
+def test_query(index_name: str = "go_test_index", question: str | None = None) -> bool:
     """Test querying the indexed repository.
 
     Args:

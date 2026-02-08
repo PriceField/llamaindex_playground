@@ -1,10 +1,6 @@
 """Unit tests for code_extractors module."""
-import sys
 import pytest
 from unittest.mock import MagicMock
-
-# Add src to path
-sys.path.insert(0, 'src')
 
 from code_extractors import CodeMetadataExtractor
 

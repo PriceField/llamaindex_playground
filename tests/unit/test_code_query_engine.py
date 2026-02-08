@@ -1,10 +1,6 @@
 """Unit tests for code_query_engine module."""
-import sys
 import pytest
 from unittest.mock import MagicMock, patch
-
-# Add src to path
-sys.path.insert(0, 'src')
 
 from code_query_engine import CodeQueryEngine
 

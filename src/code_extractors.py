@@ -1,11 +1,15 @@
 """Extract code-specific metadata from source files."""
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from config import IndexerConfig
 
 
 class CodeMetadataExtractor:
     """Extract metadata from code files (functions, classes, imports)."""
 
-    def __init__(self, config):
+    def __init__(self, config: "IndexerConfig") -> None:
         """Initialize with configuration.
 
         Args:
@@ -13,7 +17,7 @@ class CodeMetadataExtractor:
         """
         self.config = config
 
-    def extract_metadata(self, file_path: str, content: str, language: str) -> dict:
+    def extract_metadata(self, file_path: str, content: str, language: str) -> dict[str, list[str]]:
         """Extract code metadata based on language.
 
         Args:
@@ -42,7 +46,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_python_metadata(self, content: str) -> dict:
+    def _extract_python_metadata(self, content: str) -> dict[str, list[str]]:
         """Extract Python-specific metadata.
 
         Args:
@@ -89,7 +93,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_javascript_metadata(self, content: str) -> dict:
+    def _extract_javascript_metadata(self, content: str) -> dict[str, list[str]]:
         """Extract JavaScript/TypeScript metadata.
 
         Args:
@@ -142,7 +146,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_java_metadata(self, content: str) -> dict:
+    def _extract_java_metadata(self, content: str) -> dict[str, list[str]]:
         """Extract Java metadata.
 
         Args:
@@ -184,7 +188,7 @@ class CodeMetadataExtractor:
 
         return metadata
 
-    def _extract_go_metadata(self, content: str) -> dict:
+    def _extract_go_metadata(self, content: str) -> dict[str, list[str]]:
         """Extract Go metadata.
 
         Args:

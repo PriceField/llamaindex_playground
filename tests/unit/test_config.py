@@ -1,11 +1,7 @@
 """Unit tests for config module."""
 import os
-import sys
 import pytest
 from unittest.mock import patch
-
-# Add src to path
-sys.path.insert(0, 'src')
 
 from config import IndexerConfig
 

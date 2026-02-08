@@ -4,12 +4,16 @@ from llama_index.core.node_parser import NodeParser
 from llama_index.core.schema import BaseNode, TextNode
 from llama_index.core.node_parser import SentenceSplitter
 import re
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from config import IndexerConfig
 
 
 class CodeAwareNodeParser(NodeParser):
     """Custom node parser that preserves code structure."""
 
-    def __init__(self, config, **kwargs):
+    def __init__(self, config: "IndexerConfig", **kwargs: Any) -> None:
         """Initialize with configuration.
 
         Args:
@@ -21,7 +25,7 @@ class CodeAwareNodeParser(NodeParser):
         object.__setattr__(self, '_config', config)
 
     @property
-    def config(self):
+    def config(self) -> "IndexerConfig":
         """Get configuration."""
         return getattr(self, '_config', None)
 

@@ -34,13 +34,13 @@ load_dotenv()
 DEBUG = os.getenv("APP_DEBUG", "False").lower() == "true"
 
 
-def debug_log(message):
+def debug_log(message: str) -> None:
     """Print debug message if debug mode is enabled."""
     if DEBUG:
         print(f"[DEBUG] {message}")
 
 
-def validate_environment(require_llm: bool = True):
+def validate_environment(require_llm: bool = True) -> None:
     """Validate required environment variables.
 
     Args:
@@ -71,15 +71,15 @@ def validate_environment(require_llm: bool = True):
 class CustomOpenAI(OpenAI):
     """Custom OpenAI LLM that bypasses model validation for custom endpoints."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         # Temporarily store the custom model name
-        custom_model = kwargs.get('model', 'gpt-3.5-turbo')
+        custom_model = kwargs.get('model', 'gpt-3.5-turbo')  # type: ignore
 
         # Use a valid OpenAI model name for initialization to pass validation
-        kwargs['model'] = 'gpt-3.5-turbo'
+        kwargs['model'] = 'gpt-3.5-turbo'  # type: ignore
 
         # Initialize parent class
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore
 
         # Override with the actual custom model name after initialization
         self._model = custom_model
@@ -103,7 +103,7 @@ class ProgressTracker:
         self.progress_file = storage_dir / "progress.json"
         self.data: dict = self._create_empty_data()
 
-    def _create_empty_data(self) -> dict:
+    def _create_empty_data(self) -> dict[str, object]:
         """Create empty progress data structure.
 
         Returns:
@@ -124,7 +124,7 @@ class ProgressTracker:
             }
         }
 
-    def load(self) -> dict:
+    def load(self) -> dict[str, object]:
         """Load existing progress or create new.
 
         Returns:
@@ -139,7 +139,7 @@ class ProgressTracker:
             debug_log("Created new progress tracker")
         return self.data
 
-    def save(self):
+    def save(self) -> None:
         """Save current progress to disk."""
         self.data["last_updated"] = datetime.now().isoformat()
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -147,7 +147,7 @@ class ProgressTracker:
             json.dump(self.data, f, indent=2)
         debug_log(f"Progress saved: {self.data['progress']['processed_files']} files")
 
-    def mark_processed(self, file_path: str):
+    def mark_processed(self, file_path: str) -> None:
         """Mark a file as processed.
 
         Args:
@@ -168,7 +168,7 @@ class ProgressTracker:
         """
         return file_path in self.data["progress"]["processed_file_paths"]
 
-    def mark_error(self, file_path: str, error: str):
+    def mark_error(self, file_path: str, error: str) -> None:
         """Mark a file as having an error.
 
         Args:
@@ -181,7 +181,7 @@ class ProgressTracker:
             "timestamp": datetime.now().isoformat()
         })
 
-    def mark_complete(self):
+    def mark_complete(self) -> None:
         """Mark indexing as complete."""
         self.data["status"] = "completed"
         self.data["progress"]["last_batch_at"] = datetime.now().isoformat()
@@ -214,7 +214,7 @@ class DocumentIndexer:
 
         self._setup_llm_and_embeddings()
 
-    def _setup_llm_and_embeddings(self):
+    def _setup_llm_and_embeddings(self) -> None:
         """Setup LLM and embeddings from environment."""
         print("\n[*] Setting up LLM and embeddings...")
 
@@ -448,7 +448,7 @@ class DocumentIndexer:
         Side effects:
             Registers signal handler that will sys.exit(0) on SIGINT
         """
-        def signal_handler(sig, frame):
+        def signal_handler(sig: int, _frame: object) -> None:
             print("\n\n[PAUSE]  Interrupted by user")
             print("[SAVE] Saving progress...")
             if self.index is not None:
@@ -527,7 +527,7 @@ class DocumentIndexer:
         recursive: bool = True,
         batch_size: int = 10,
         autosave_interval: int = 60,
-    ):
+    ) -> None:
         """Index documents from a directory with batch processing and auto-save.
 
         Args:
@@ -616,7 +616,7 @@ class DocumentIndexer:
 
     def query(self, question: str, top_k: int | None = None,
               language: str | None = None,
-              category: str | None = None):
+              category: str | None = None) -> None:
         """Query the index with code-aware search.
 
         Args:
@@ -664,7 +664,7 @@ class DocumentIndexer:
             debug_log(f"Error details: {str(e)}")
             raise
 
-    def delete_index(self):
+    def delete_index(self) -> None:
         """Delete the index from storage."""
         if not self.index_exists():
             print(f"[i] No index to delete at {self.storage_dir}")
@@ -1097,7 +1097,7 @@ def main_menu() -> None:
 # SIMPLE TEST FUNCTIONS - For Debugging and Future Testing
 # ============================================================================
 
-def example_simple_query():
+def example_simple_query() -> None:
     """Example: Simple query to Claude via LlamaIndex (for testing LLM)."""
     print("\n" + "=" * 60)
     print("TEST: Simple LLM Query")
@@ -1130,7 +1130,7 @@ def example_simple_query():
         print(f"\n[X] Failed: {e}")
 
 
-def example_document_query():
+def example_document_query() -> None:
     """Example: Query indexed documents (placeholder for future tests)."""
     print("\n" + "=" * 60)
     print("TEST: Document Query")

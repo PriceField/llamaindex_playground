@@ -6,7 +6,7 @@ help: ## Show this help message
 
 install: ## Install dependencies
 	python -m pip install --upgrade pip
-	pip install -r requirements.txt
+	pip install -e .[dev]
 
 run: ## Run the application
 	python src/main.py

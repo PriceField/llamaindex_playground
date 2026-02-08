@@ -71,7 +71,7 @@ make lint          # Check code quality
 
 **Import errors?**
 - Make sure you activated the virtual environment
-- Try: `pip install -r requirements.txt`
+- Try: `make install` or `pip install -e .[dev]`
 
 **API key errors?**
 - Check that `.env` file exists and has your key
