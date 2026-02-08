@@ -41,6 +41,34 @@ def debug_log(message):
         print(f"[DEBUG] {message}")
 
 
+def validate_environment(require_llm: bool = True):
+    """Validate required environment variables.
+
+    Args:
+        require_llm: If True, validate API_KEY and API_BASE are set
+
+    Raises:
+        ValueError: If required environment variables are missing
+    """
+    if require_llm:
+        api_key = os.getenv("API_KEY")
+        if not api_key:
+            raise ValueError(
+                "API_KEY is required in .env file\n"
+                "Copy .env.example to .env and add your API key\n"
+                "Or run with --no-llm flag for indexing-only mode"
+            )
+
+        api_base = os.getenv("API_BASE")
+        if not api_base:
+            raise ValueError(
+                "API_BASE is required in .env file\n"
+                "Copy .env.example to .env and configure your API endpoint"
+            )
+
+        debug_log(f"Environment validated: API_KEY and API_BASE present")
+
+
 class CustomOpenAI(OpenAI):
     """Custom OpenAI LLM that bypasses model validation for custom endpoints."""
 
@@ -164,15 +192,21 @@ class ProgressTracker:
 class DocumentIndexer:
     """Index documents from folders/repos with progress tracking and persistence."""
 
-    def __init__(self, index_name: str = "default"):
+    def __init__(self, index_name: str = "default", require_llm: bool = True):
         """Initialize the indexer.
 
         Args:
             index_name: Name for this index (for storage)
+            require_llm: If True, validate and require LLM configuration (default: True)
+                        Set to False for indexing-only mode
         """
         self.index_name = index_name
         self.storage_dir = Path("storage") / index_name
         self.index: Optional[VectorStoreIndex] = None
+        self.require_llm = require_llm
+
+        # Validate environment variables before proceeding
+        validate_environment(require_llm=require_llm)
 
         # Initialize code-aware components
         self.config = IndexerConfig()
@@ -185,11 +219,12 @@ class DocumentIndexer:
         """Setup LLM and embeddings from environment."""
         print("\n[*] Setting up LLM and embeddings...")
 
-        api_token = os.getenv("API_KEY")
-        api_base = os.getenv("API_BASE", "https://api.rdsec.trendmicro.com/prod/aiendpoint/v1")
-        model = os.getenv("MODEL_NAME", "claude-sonnet-4-5-20250929")
+        # Setup LLM if required (validation already ensured API_KEY is present)
+        if self.require_llm:
+            api_token = os.getenv("API_KEY")
+            api_base = os.getenv("API_BASE", "https://api.rdsec.trendmicro.com/prod/aiendpoint/v1")
+            model = os.getenv("MODEL_NAME", "claude-sonnet-4-5-20250929")
 
-        if api_token:
             Settings.llm = CustomOpenAI(
                 api_key=api_token,
                 api_base=api_base,
@@ -198,7 +233,7 @@ class DocumentIndexer:
             )
             print(f"[OK] LLM configured: {model}")
         else:
-            print("[!] No API_KEY found, queries will fail")
+            print("[*] Indexing-only mode: LLM not configured")
 
         # Always use local embeddings for reliability
         Settings.embed_model = HuggingFaceEmbedding(

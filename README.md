@@ -184,7 +184,17 @@ CHUNK_OVERLAP=20         # Overlap between chunks
 
 **API key errors?**
 - Check `.env` file exists (copy from `.env.example`)
-- Verify your Anthropic API key is correct
+- Verify your API key is correct in `.env`
+- **Error: "API_KEY is required in .env file"**
+  - Create `.env` file from `.env.example`: `cp .env.example .env`
+  - Add your API key to the `.env` file
+  - Make sure `API_KEY` variable is set (not `ANTHROPIC_API_KEY`)
+- **Error: "API_BASE is required in .env file"**
+  - Add `API_BASE` to your `.env` file
+  - Example: `API_BASE=https://api.openai.com/v1` or your custom endpoint
+- **Indexing without queries?**
+  - If you only need to index files (no queries), you can skip LLM validation
+  - Use indexing-only mode in your code: `DocumentIndexer(require_llm=False)`
 
 **ChromaDB errors?**
 - Delete `chroma_db/` folder and try again: `make clean`
