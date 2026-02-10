@@ -14,9 +14,12 @@ class LanguageDetector:
 
         Args:
             language_extensions: Optional custom language mappings.
-                                Defaults to built-in mappings if None.
+                                Merged with built-in mappings (custom overrides defaults).
         """
-        self.language_extensions = language_extensions or self._build_default_extensions()
+        self.default_extensions = self._build_default_extensions()
+        self.custom_extensions = language_extensions or {}
+        # Merge for backwards compatibility with get_extensions_for_language
+        self.language_extensions = {**self.default_extensions, **self.custom_extensions}
 
     @staticmethod
     def _build_default_extensions() -> dict[str, list[str]]:
@@ -28,12 +31,12 @@ class LanguageDetector:
         return {
             "csharp": [".cs"],
             "python": [".py", ".pyw"],
-            "javascript": [".js", ".jsx", ".mjs"],
+            "javascript": [".js", ".jsx", ".mjs", ".cjs"],
             "typescript": [".ts", ".tsx"],
             "java": [".java"],
             "go": [".go"],
             "rust": [".rs"],
-            "cpp": [".cpp", ".cc", ".cxx", ".hpp", ".h", ".hxx"],
+            "cpp": [".cpp", ".cc", ".cxx", ".hpp", ".hxx"],
             "c": [".c", ".h"],
             "ruby": [".rb"],
             "php": [".php"],
@@ -52,9 +55,17 @@ class LanguageDetector:
             Language name (e.g., 'python', 'javascript') or 'unknown'
         """
         ext = Path(file_path).suffix.lower()
-        for lang, extensions in self.language_extensions.items():
+
+        # Check custom mappings first (allows overriding defaults)
+        for lang, extensions in self.custom_extensions.items():
             if ext in extensions:
                 return lang
+
+        # Check default mappings
+        for lang, extensions in self.default_extensions.items():
+            if ext in extensions:
+                return lang
+
         return "unknown"
 
     def is_code_file(self, file_path: str) -> bool:

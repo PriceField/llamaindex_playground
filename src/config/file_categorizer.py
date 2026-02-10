@@ -51,14 +51,14 @@ class FileCategorizer:
         """
         ext = Path(file_path).suffix.lower()
 
-        # Check if it's code (highest priority)
-        if self.language_detector.is_code_file(file_path):
-            return "code"
-
-        # Check other categories
+        # Check custom categories first (allows overriding defaults)
         for category, extensions in self.category_extensions.items():
             if ext in extensions:
                 return category
+
+        # Check if it's code (fallback for code files not in custom categories)
+        if self.language_detector.is_code_file(file_path):
+            return "code"
 
         return "other"
 

@@ -5,21 +5,22 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.prompts import PromptTemplate
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from config import IndexerConfig
+from config import QueryConfig
 
 
 class CodeQueryEngine:
-    """Enhanced query engine with code-specific features."""
+    """Enhanced query engine with code-specific features.
 
-    def __init__(self, index: VectorStoreIndex, config: "IndexerConfig") -> None:
-        """Initialize with index and configuration.
+    Follows Dependency Injection Principle - takes QueryConfig for query settings.
+    """
+
+    def __init__(self, index: VectorStoreIndex, config: QueryConfig) -> None:
+        """Initialize with index and query configuration.
 
         Args:
             index: VectorStoreIndex to query
-            config: IndexerConfig instance
+            config: QueryConfig instance
         """
         self.index = index
         self.config = config

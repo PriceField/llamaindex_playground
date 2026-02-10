@@ -55,11 +55,10 @@ class JavaScriptMetadataExtractor(LanguageMetadataExtractor):
             functions = self._extract_functions(content)
 
         return CodeMetadata(
+            language=self.language,
             functions=functions,
             classes=classes,
             imports=imports,
-            language=self.language,
-            category="code",
         )
 
     def _extract_imports(self, content: str) -> list[str]:

@@ -16,19 +16,17 @@ class TestCodeQueryEngine:
         mock_retriever_query_engine,
         mock_retriever_cls,
         mock_synthesizer,
-        mock_config
+        query_config
     ):
         """Test creating query engine with default parameters."""
         mock_index = MagicMock()
-        mock_config.code_similarity_top_k = 5
-        mock_config.include_source_context = True
 
-        engine = CodeQueryEngine(mock_index, mock_config)
+        engine = CodeQueryEngine(mock_index, query_config)
 
         # The method creates a RetrieverQueryEngine internally
         query_engine = engine.create_query_engine()
 
-        # Verify VectorIndexRetriever was called with correct top_k
+        # Verify VectorIndexRetriever was called with correct top_k (from fixture: 5)
         mock_retriever_cls.assert_called_once()
         call_kwargs = mock_retriever_cls.call_args[1]
         assert call_kwargs['similarity_top_k'] == 5
@@ -41,14 +39,12 @@ class TestCodeQueryEngine:
         mock_retriever_query_engine,
         mock_retriever_cls,
         mock_synthesizer,
-        mock_config
+        query_config
     ):
         """Test creating query engine with custom parameters."""
         mock_index = MagicMock()
-        mock_config.code_similarity_top_k = 5
-        mock_config.include_source_context = True
 
-        engine = CodeQueryEngine(mock_index, mock_config)
+        engine = CodeQueryEngine(mock_index, query_config)
 
         # Create with custom top_k
         query_engine = engine.create_query_engine(similarity_top_k=10)
@@ -58,33 +54,39 @@ class TestCodeQueryEngine:
         call_kwargs = mock_retriever_cls.call_args[1]
         assert call_kwargs['similarity_top_k'] == 10
 
-    def test_get_code_qa_prompt_with_source_context(self, mock_config):
+    def test_get_code_qa_prompt_with_source_context(self, query_config):
         """Test QA prompt generation with source context enabled."""
-        mock_config.include_source_context = True
         mock_index = MagicMock()
 
-        engine = CodeQueryEngine(mock_index, mock_config)
+        engine = CodeQueryEngine(mock_index, query_config)
         prompt_template = engine._get_code_qa_prompt()
 
         # Verify prompt contains code-specific instructions
         assert prompt_template is not None
         assert "code" in prompt_template.template.lower() or "source" in prompt_template.template.lower()
 
-    def test_get_code_qa_prompt_without_source_context(self, mock_config):
+    def test_get_code_qa_prompt_without_source_context(self):
         """Test QA prompt generation with source context disabled."""
-        mock_config.include_source_context = False
+        from config import QueryConfig
+
+        # Create config with source context disabled
+        config = QueryConfig(
+            code_similarity_top_k=5,
+            use_metadata_filters=True,
+            include_source_context=False
+        )
         mock_index = MagicMock()
 
-        engine = CodeQueryEngine(mock_index, mock_config)
+        engine = CodeQueryEngine(mock_index, config)
         prompt_template = engine._get_code_qa_prompt()
 
         # Prompt should still be created
         assert prompt_template is not None
 
-    def test_format_response_with_sources(self, mock_config):
+    def test_format_response_with_sources(self, query_config):
         """Test formatting response with source information."""
         mock_index = MagicMock()
-        engine = CodeQueryEngine(mock_index, mock_config)
+        engine = CodeQueryEngine(mock_index, query_config)
 
         # Create mock response with source nodes
         mock_response = MagicMock()
@@ -121,10 +123,10 @@ class TestCodeQueryEngine:
         assert "file1.py" in formatted
         assert "file2.py" in formatted
 
-    def test_format_response_without_sources(self, mock_config):
+    def test_format_response_without_sources(self, query_config):
         """Test formatting response without source nodes."""
         mock_index = MagicMock()
-        engine = CodeQueryEngine(mock_index, mock_config)
+        engine = CodeQueryEngine(mock_index, query_config)
 
         mock_response = MagicMock()
         mock_response.__str__ = MagicMock(return_value="Simple response")

@@ -39,27 +39,49 @@ class EnvParser:
             default: Default value if not found
 
         Returns:
-            Parsed boolean value (true/false case-insensitive)
+            Parsed boolean value (true/false/1/0 case-insensitive)
         """
-        value = os.getenv(key, str(default))
+        value = os.getenv(key)
+        if value is None:
+            return default
+
         # Strip inline comments (everything after #)
-        value = value.split('#')[0].strip()
-        return value.lower() == "true"
+        value = value.split('#')[0].strip().lower()
+
+        # Accept various true/false representations
+        if value in ("true", "1", "yes", "on"):
+            return True
+        elif value in ("false", "0", "no", "off"):
+            return False
+        else:
+            # Invalid value, return default
+            return default
 
     @staticmethod
-    def parse_list(key: str, default: str = "") -> list[str]:
+    def parse_list(key: str, default: list[str] | None = None) -> list[str]:
         """Parse comma-separated list from env var, stripping inline comments.
 
         Args:
             key: Environment variable key
-            default: Default comma-separated string value
+            default: Default list to return if var not found or empty
 
         Returns:
             List of parsed, trimmed strings (empty items removed)
         """
-        value = os.getenv(key, default)
+        if default is None:
+            default = []
+
+        value = os.getenv(key)
+        if value is None:
+            return default
+
         # Strip inline comments (everything after #)
         value = value.split('#')[0].strip()
+
+        # If empty string after stripping, return default
+        if not value:
+            return default
+
         return [item.strip() for item in value.split(",") if item.strip()]
 
     @staticmethod

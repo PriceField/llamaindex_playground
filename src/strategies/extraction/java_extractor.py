@@ -44,22 +44,24 @@ class JavaMetadataExtractor(LanguageMetadataExtractor):
         functions = []
         classes = []
         imports = []
+        interfaces = []
 
         if extract_imports:
             imports = self._extract_imports(content)
 
         if extract_classes:
             classes = self._extract_classes(content)
+            interfaces = self._extract_interfaces(content)
 
         if extract_functions:
             functions = self._extract_functions(content)
 
         return CodeMetadata(
+            language=self.language,
             functions=functions,
             classes=classes,
             imports=imports,
-            language=self.language,
-            category="code",
+            interfaces=interfaces,
         )
 
     def _extract_imports(self, content: str) -> list[str]:
@@ -80,16 +82,16 @@ class JavaMetadataExtractor(LanguageMetadataExtractor):
         return imports
 
     def _extract_classes(self, content: str) -> list[str]:
-        """Extract class and interface definitions.
+        """Extract class definitions.
 
         Args:
             content: Java source code
 
         Returns:
-            List of class/interface names with inheritance info
+            List of class names with inheritance info
         """
         classes = []
-        class_pattern = r'^(?:public\s+)?(?:abstract\s+)?(?:class|interface)\s+(\w+)(?:\s+extends\s+(\w+))?'
+        class_pattern = r'^(?:public\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?'
 
         for match in re.finditer(class_pattern, content, re.MULTILINE):
             class_name = match.group(1)
@@ -97,6 +99,25 @@ class JavaMetadataExtractor(LanguageMetadataExtractor):
             classes.append(f"{class_name}{extends}")
 
         return classes
+
+    def _extract_interfaces(self, content: str) -> list[str]:
+        """Extract interface definitions.
+
+        Args:
+            content: Java source code
+
+        Returns:
+            List of interface names with inheritance info
+        """
+        interfaces = []
+        interface_pattern = r'^(?:public\s+)?interface\s+(\w+)(?:\s+extends\s+(\w+))?'
+
+        for match in re.finditer(interface_pattern, content, re.MULTILINE):
+            interface_name = match.group(1)
+            extends = f" extends {match.group(2)}" if match.group(2) else ""
+            interfaces.append(f"{interface_name}{extends}")
+
+        return interfaces
 
     def _extract_functions(self, content: str) -> list[str]:
         """Extract method declarations.

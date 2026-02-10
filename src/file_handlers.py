@@ -1,22 +1,33 @@
 """Smart file type detection and handling."""
 from pathlib import Path
 import re
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from config import IndexerConfig
+from config import FileFilterConfig, LanguageDetector, FileCategorizer
 
 
 class FileHandler:
-    """Handle file type detection and smart exclusions."""
+    """Handle file type detection and smart exclusions.
 
-    def __init__(self, config: "IndexerConfig") -> None:
-        """Initialize with configuration.
+    Follows Dependency Injection Principle - takes separate components
+    instead of monolithic config.
+    """
+
+    def __init__(
+        self,
+        file_filter_config: FileFilterConfig,
+        language_detector: LanguageDetector,
+        file_categorizer: FileCategorizer
+    ) -> None:
+        """Initialize with configuration and detectors.
 
         Args:
-            config: IndexerConfig instance
+            file_filter_config: Configuration for file filtering
+            language_detector: Language detection utility
+            file_categorizer: File categorization utility
         """
-        self.config = config
+        self.file_filter_config = file_filter_config
+        self.language_detector = language_detector
+        self.file_categorizer = file_categorizer
 
     def should_index_file(self, file_path: str,
                           user_extensions: list[str] | None = None,
@@ -39,7 +50,7 @@ class FileHandler:
                 return False
 
         # Combine default and user exclude patterns
-        exclude_patterns = self.config.default_exclude_patterns.copy()
+        exclude_patterns = self.file_filter_config.default_exclude_patterns.copy()
         if user_exclude:
             exclude_patterns.extend(user_exclude)
 
@@ -88,6 +99,6 @@ class FileHandler:
             "file_path": str(path.resolve()),
             "file_name": path.name,
             "file_extension": path.suffix.lower(),
-            "language": self.config.detect_language(str(path)),
-            "category": self.config.detect_category(str(path)),
+            "language": self.language_detector.detect(str(path)),
+            "category": self.file_categorizer.categorize(str(path)),
         }

@@ -56,11 +56,10 @@ class GoMetadataExtractor(LanguageMetadataExtractor):
 
         # Go uses "structs" field instead of "classes"
         return CodeMetadata(
+            language=self.language,
             functions=functions,
             classes=structs,  # Note: mapping structs to classes field
             imports=imports,
-            language=self.language,
-            category="code",
         )
 
     def _extract_imports(self, content: str) -> list[str]:

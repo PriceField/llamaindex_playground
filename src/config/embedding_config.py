@@ -18,6 +18,7 @@ class EmbeddingConfig:
         embed_api_key: API key for OpenAI embeddings
         embed_api_base: Base URL for OpenAI API (optional)
         embed_openai_model: OpenAI model name for embeddings
+        embed_model_dimension: Dimension of embedding vectors
     """
 
     embed_model_type: str
@@ -25,6 +26,7 @@ class EmbeddingConfig:
     embed_api_key: str
     embed_api_base: str
     embed_openai_model: str
+    embed_model_dimension: int = 1024
 
     def __post_init__(self) -> None:
         """Validate configuration."""
@@ -73,11 +75,12 @@ class EmbeddingConfig:
             embed_api_key=embed_api_key,
             embed_api_base=EnvParser.parse_str("EMBED_API_BASE", ""),
             embed_openai_model=EnvParser.parse_str("EMBED_OPENAI_MODEL", "text-embedding-ada-002"),
+            embed_model_dimension=EnvParser.parse_int("EMBED_MODEL_DIMENSION", 1024),
         )
 
     @classmethod
-    def local_default(cls) -> "EmbeddingConfig":
-        """Create configuration for local embeddings with defaults.
+    def default(cls) -> "EmbeddingConfig":
+        """Create configuration with default local embeddings.
 
         Returns:
             EmbeddingConfig for local HuggingFace embeddings
@@ -88,14 +91,27 @@ class EmbeddingConfig:
             embed_api_key="",
             embed_api_base="",
             embed_openai_model="",
+            embed_model_dimension=1024,
         )
+
+    @classmethod
+    def local_default(cls) -> "EmbeddingConfig":
+        """Create configuration for local embeddings with defaults.
+
+        Alias for default() for backward compatibility.
+
+        Returns:
+            EmbeddingConfig for local HuggingFace embeddings
+        """
+        return cls.default()
 
     @classmethod
     def openai(
         cls,
         api_key: str,
         model: str = "text-embedding-ada-002",
-        api_base: str = ""
+        api_base: str = "",
+        dimension: int = 1536
     ) -> "EmbeddingConfig":
         """Create configuration for OpenAI embeddings.
 
@@ -103,6 +119,7 @@ class EmbeddingConfig:
             api_key: OpenAI API key
             model: OpenAI embedding model name
             api_base: Optional custom API base URL
+            dimension: Embedding vector dimension (1536 for ada-002)
 
         Returns:
             EmbeddingConfig for OpenAI embeddings
@@ -113,4 +130,5 @@ class EmbeddingConfig:
             embed_api_key=api_key,
             embed_api_base=api_base,
             embed_openai_model=model,
+            embed_model_dimension=dimension,
         )
