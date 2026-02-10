@@ -110,5 +110,97 @@ class TestIndexerConfig:
         assert len(config.supported_languages) == 2
 
 
+class TestEmbeddingConfig:
+    """Test suite for embedding configuration in IndexerConfig."""
+
+    @patch.dict(os.environ, {"EMBED_MODEL_TYPE": "local"}, clear=True)
+    def test_embed_type_local(self):
+        """Test EMBED_MODEL_TYPE=local."""
+        config = IndexerConfig()
+        assert config.embed_model_type == "local"
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {"EMBED_MODEL_TYPE": "openai"}, clear=True)
+    def test_embed_type_openai(self, mock_dotenv):
+        """Test EMBED_MODEL_TYPE=openai."""
+        config = IndexerConfig()
+        assert config.embed_model_type == "openai"
+
+    @patch.dict(os.environ, {"EMBED_MODEL_NAME": "sentence-transformers/all-MiniLM-L6-v2"}, clear=True)
+    def test_custom_huggingface_model(self):
+        """Test custom HuggingFace model name."""
+        config = IndexerConfig()
+        assert config.embed_model_name == "sentence-transformers/all-MiniLM-L6-v2"
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {}, clear=True)
+    def test_default_huggingface_model(self, mock_dotenv):
+        """Test default HuggingFace model name."""
+        config = IndexerConfig()
+        assert config.embed_model_name == "BAAI/bge-large-en-v1.5"
+
+    @patch.dict(os.environ, {"EMBED_OPENAI_MODEL": "text-embedding-3-small"}, clear=True)
+    def test_custom_openai_model(self):
+        """Test custom OpenAI model name."""
+        config = IndexerConfig()
+        assert config.embed_openai_model == "text-embedding-3-small"
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_default_openai_model(self):
+        """Test default OpenAI model name."""
+        config = IndexerConfig()
+        assert config.embed_openai_model == "text-embedding-ada-002"
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {"EMBED_MODEL_TYPE": "INVALID"}, clear=True)
+    def test_invalid_embed_type_defaults_to_local(self, mock_dotenv, capsys):
+        """Test invalid EMBED_MODEL_TYPE defaults to local with warning."""
+        config = IndexerConfig()
+        assert config.embed_model_type == "local"
+        # Check that warning was printed
+        captured = capsys.readouterr()
+        assert "[!] Invalid EMBED_MODEL_TYPE" in captured.out
+
+    @patch.dict(os.environ, {"EMBED_API_KEY": "test-key-123"}, clear=True)
+    def test_embed_api_key(self):
+        """Test EMBED_API_KEY is stored."""
+        config = IndexerConfig()
+        assert config.embed_api_key == "test-key-123"
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {"API_KEY": "fallback-key-456"}, clear=True)
+    def test_embed_api_key_fallback_to_api_key(self, mock_dotenv):
+        """Test EMBED_API_KEY falls back to API_KEY when not set."""
+        config = IndexerConfig()
+        assert config.embed_api_key == "fallback-key-456"
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {"EMBED_API_KEY": "embed-key", "API_KEY": "api-key"}, clear=True)
+    def test_embed_api_key_takes_precedence_over_api_key(self, mock_dotenv):
+        """Test EMBED_API_KEY takes precedence over API_KEY."""
+        config = IndexerConfig()
+        assert config.embed_api_key == "embed-key"
+
+    @patch.dict(os.environ, {"EMBED_API_BASE": "https://custom.api.com"}, clear=True)
+    def test_embed_api_base(self):
+        """Test EMBED_API_BASE is stored."""
+        config = IndexerConfig()
+        assert config.embed_api_base == "https://custom.api.com"
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {}, clear=True)
+    def test_default_embed_api_key_empty(self, mock_dotenv):
+        """Test EMBED_API_KEY defaults to empty string when neither is set."""
+        config = IndexerConfig()
+        assert config.embed_api_key == ""
+
+    @patch('config.load_dotenv')
+    @patch.dict(os.environ, {}, clear=True)
+    def test_default_embed_api_base_empty(self, mock_dotenv):
+        """Test EMBED_API_BASE defaults to empty string."""
+        config = IndexerConfig()
+        assert config.embed_api_base == ""
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

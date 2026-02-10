@@ -10,10 +10,14 @@ import pytest
 from src.main import DocumentIndexer, ProgressTracker
 
 
+@patch('src.main.Settings')
+@patch('src.main.HuggingFaceEmbedding')
+@patch('src.main.CodeAwareNodeParser')
+@patch('config.load_dotenv')
 class TestPrintIndexingConfig:
     """Tests for _print_indexing_config() method."""
 
-    def test_print_indexing_config_basic(self, tmp_path, capsys):
+    def test_print_indexing_config_basic(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, capsys):
         """Test printing basic indexing configuration."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -36,7 +40,7 @@ class TestPrintIndexingConfig:
         assert "Batch size: 10 files" in captured.out
         assert "Auto-save: every 60 seconds" in captured.out
 
-    def test_print_indexing_config_with_extensions(self, tmp_path, capsys):
+    def test_print_indexing_config_with_extensions(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, capsys):
         """Test printing config with file extensions."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -57,10 +61,14 @@ class TestPrintIndexingConfig:
         assert "Excluding: *test*" in captured.out
 
 
+@patch('src.main.Settings')
+@patch('src.main.HuggingFaceEmbedding')
+@patch('src.main.CodeAwareNodeParser')
+@patch('config.load_dotenv')
 class TestSaveConfigToTracker:
     """Tests for _save_config_to_tracker() method."""
 
-    def test_save_config_to_tracker(self, tmp_path):
+    def test_save_config_to_tracker(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path):
         """Test saving configuration to progress tracker."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -88,10 +96,14 @@ class TestSaveConfigToTracker:
         assert tracker.data["config"]["autosave_interval"] == 120
 
 
+@patch('src.main.Settings')
+@patch('src.main.HuggingFaceEmbedding')
+@patch('src.main.CodeAwareNodeParser')
+@patch('config.load_dotenv')
 class TestPrintCompletionSummary:
     """Tests for _print_completion_summary() method."""
 
-    def test_print_completion_summary_no_errors(self, tmp_path, capsys):
+    def test_print_completion_summary_no_errors(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, capsys):
         """Test printing completion summary without errors."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -109,7 +121,7 @@ class TestPrintCompletionSummary:
         assert "Processed: 10" in captured.out
         assert str(tmp_path) in captured.out
 
-    def test_print_completion_summary_with_errors(self, tmp_path, capsys):
+    def test_print_completion_summary_with_errors(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, capsys):
         """Test printing completion summary with errors."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -129,10 +141,14 @@ class TestPrintCompletionSummary:
         assert "Errors: 2" in captured.out
 
 
+@patch('src.main.Settings')
+@patch('src.main.HuggingFaceEmbedding')
+@patch('src.main.CodeAwareNodeParser')
+@patch('config.load_dotenv')
 class TestConfirmIndexing:
     """Tests for _confirm_indexing() method."""
 
-    def test_confirm_indexing_resume_accepted(self, tmp_path, monkeypatch):
+    def test_confirm_indexing_resume_accepted(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, monkeypatch):
         """Test user confirms resume."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -146,7 +162,7 @@ class TestConfirmIndexing:
         )
         assert result is True
 
-    def test_confirm_indexing_resume_rejected(self, tmp_path, monkeypatch):
+    def test_confirm_indexing_resume_rejected(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, monkeypatch):
         """Test user rejects resume."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -160,7 +176,7 @@ class TestConfirmIndexing:
         )
         assert result is False
 
-    def test_confirm_indexing_no_pending_files(self, tmp_path):
+    def test_confirm_indexing_no_pending_files(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path):
         """Test early return when no pending files."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -173,7 +189,7 @@ class TestConfirmIndexing:
         )
         assert result is False
 
-    def test_confirm_indexing_fresh_start(self, tmp_path, monkeypatch):
+    def test_confirm_indexing_fresh_start(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path, monkeypatch):
         """Test fresh start confirmation."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -187,7 +203,7 @@ class TestConfirmIndexing:
         )
         assert result is True
 
-    def test_confirm_indexing_fresh_start_no_files(self, tmp_path):
+    def test_confirm_indexing_fresh_start_no_files(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path):
         """Test fresh start with no files to index."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -201,10 +217,14 @@ class TestConfirmIndexing:
         assert result is False
 
 
+@patch('src.main.Settings')
+@patch('src.main.HuggingFaceEmbedding')
+@patch('src.main.CodeAwareNodeParser')
+@patch('config.load_dotenv')
 class TestSetupSignalHandler:
     """Tests for _setup_signal_handler() method."""
 
-    def test_setup_signal_handler_registered(self, tmp_path):
+    def test_setup_signal_handler_registered(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path):
         """Test that signal handler is registered."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -228,10 +248,14 @@ class TestSetupSignalHandler:
             signal.signal(signal.SIGINT, original_handler)
 
 
+@patch('src.main.Settings')
+@patch('src.main.HuggingFaceEmbedding')
+@patch('src.main.CodeAwareNodeParser')
+@patch('config.load_dotenv')
 class TestScanFiles:
     """Tests for _scan_files() method."""
 
-    def test_scan_files_updates_tracker(self, tmp_path):
+    def test_scan_files_updates_tracker(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path):
         """Test that tracker is updated with total files."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)
@@ -258,7 +282,7 @@ class TestScanFiles:
         assert len(pending_files) == 2
         assert tracker.data["progress"]["total_files"] == 2
 
-    def test_scan_files_excludes_processed(self, tmp_path):
+    def test_scan_files_excludes_processed(self, mock_dotenv, mock_parser, mock_hf_embed, mock_settings, tmp_path):
         """Test that already processed files are filtered."""
         with patch('src.main.validate_environment'):
             indexer = DocumentIndexer("test_index", require_llm=False)

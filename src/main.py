@@ -7,7 +7,11 @@ import signal
 import shutil
 from pathlib import Path
 from datetime import datetime
+from typing import TYPE_CHECKING
 from dotenv import load_dotenv
+
+if TYPE_CHECKING:
+    from llama_index.embeddings.openai import OpenAIEmbedding
 
 from llama_index.core import (
     Settings,
@@ -17,6 +21,7 @@ from llama_index.core import (
     load_index_from_storage,
     Document,
 )
+from llama_index.core.embeddings import BaseEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
@@ -26,6 +31,7 @@ from file_handlers import FileHandler
 from code_extractors import CodeMetadataExtractor
 from code_chunking import CodeAwareNodeParser
 from code_query_engine import CodeQueryEngine
+from free_query_mode import FreeQueryEngine
 
 # Load environment variables
 load_dotenv()
@@ -234,15 +240,69 @@ class DocumentIndexer:
         else:
             print("[*] Indexing-only mode: LLM not configured")
 
-        # Always use local embeddings for reliability
-        Settings.embed_model = HuggingFaceEmbedding(
-            model_name="BAAI/bge-small-en-v1.5"
-        )
-        print("[OK] Embeddings configured: BAAI/bge-small-en-v1.5")
+        # Setup embeddings using factory method
+        Settings.embed_model = self._create_embed_model()
 
         # Setup code-aware node parser
         Settings.node_parser = CodeAwareNodeParser(self.config)
         print("[OK] Code-aware chunking enabled")
+
+    def _create_embed_model(self) -> BaseEmbedding:
+        """Create embedding model based on configuration.
+
+        Returns:
+            BaseEmbedding: Configured embedding model (HuggingFace or OpenAI)
+        """
+        if self.config.embed_model_type == "openai":
+            return self._create_openai_embeddings()
+        else:
+            return self._create_huggingface_embeddings()
+
+    def _create_huggingface_embeddings(self) -> HuggingFaceEmbedding:
+        """Create HuggingFace embedding model.
+
+        Returns:
+            HuggingFaceEmbedding: Configured HuggingFace embeddings
+        """
+        model_name = self.config.embed_model_name
+        print(f"[OK] Embeddings configured: HuggingFace - {model_name}")
+
+        return HuggingFaceEmbedding(model_name=model_name)
+
+    def _create_openai_embeddings(self) -> "OpenAIEmbedding":
+        """Create OpenAI embedding model.
+
+        Returns:
+            OpenAIEmbedding: Configured OpenAI embeddings
+
+        Raises:
+            ValueError: If API key is not configured
+        """
+        from llama_index.embeddings.openai import OpenAIEmbedding
+
+        # Use API key from config (already handles fallback to API_KEY)
+        api_key = self.config.embed_api_key
+        if not api_key:
+            raise ValueError(
+                "OpenAI embeddings require an API key.\n"
+                "Set EMBED_API_KEY or API_KEY in your .env file"
+            )
+
+        # Build kwargs for OpenAIEmbedding
+        kwargs = {
+            "api_key": api_key,
+            "model": self.config.embed_openai_model,
+        }
+
+        # Add api_base if configured
+        if self.config.embed_api_base:
+            kwargs["api_base"] = self.config.embed_api_base
+
+        print(f"[OK] Embeddings configured: OpenAI - {self.config.embed_openai_model}")
+        if self.config.embed_api_base:
+            print(f"    Using custom endpoint: {self.config.embed_api_base}")
+
+        return OpenAIEmbedding(**kwargs)
 
     def _load_document_with_metadata(self, file_path: str) -> Document | None:
         """Load a document with enhanced code-aware metadata.
@@ -664,6 +724,47 @@ class DocumentIndexer:
             debug_log(f"Error details: {str(e)}")
             raise
 
+    def free_query(self, question: str, top_k: int | None = None) -> None:
+        """Query the index with FREE retrieval-only mode (no LLM costs).
+
+        This method uses only local vector search with HuggingFace embeddings.
+        No LLM API calls are made, so there are ZERO costs.
+
+        Args:
+            question: Question to search for
+            top_k: Number of relevant documents to retrieve (uses config default if None)
+        """
+        if self.index is None:
+            if not self.load_existing_index():
+                print("[X] No index available. Please index documents first.")
+                return
+
+        # Type assertion: index must be non-None at this point
+        assert self.index is not None, "Index must be loaded"
+
+        # Ensure top_k is an int
+        top_k_value: int = top_k if top_k is not None else self.config.code_similarity_top_k
+
+        print(f"\n[?] Query (FREE MODE): {question}")
+        print(f"   Retrieving top {top_k_value} relevant sources...")
+        print(f"   💰 Cost: $0.00 (No LLM calls)")
+
+        try:
+            # Create FREE query engine (no LLM)
+            free_engine = FreeQueryEngine(self.index, self.config)
+
+            print("\n... Searching vector database...")
+            results = free_engine.query(question, top_k_value)
+
+            # Format and display results
+            formatted = free_engine.format_results(results)
+            print(f"\n{formatted}\n")
+
+        except Exception as e:
+            print(f"\n[X] Query failed: {e}")
+            debug_log(f"Error details: {str(e)}")
+            raise
+
     def delete_index(self) -> None:
         """Delete the index from storage."""
         if not self.index_exists():
@@ -897,6 +998,46 @@ def query_mode(indexer: DocumentIndexer) -> None:
     print("\n" + "=" * 70)
     print(f"QUERY MODE - Index: {indexer.index_name}")
     print("=" * 70)
+
+    # Choose query mode (FREE vs PAID)
+    print("\n[MODE SELECTION]")
+    print("  1. FREE mode - Retrieval only, no LLM (💰 $0.00 per query)")
+    print("  2. AI mode - LLM synthesis (💰 ~$0.01-0.05 per query)")
+    mode_choice = input("\nYour choice (1/2, default: 1): ").strip()
+
+    use_free_mode = mode_choice != "2"
+
+    if use_free_mode:
+        print("\n[OK] Using FREE mode - No LLM costs!")
+        print("[i] Commands: 'back' or 'exit' to return")
+        print()
+
+        # Simple loop for free mode
+        while True:
+            question = input("\nYour question: ").strip()
+
+            if question.lower() in ['back', 'exit']:
+                print("[OK] Exiting query mode...")
+                break
+
+            if not question:
+                print("[X] No question specified")
+                continue
+
+            # Get top_k
+            top_k_input = input("Number of results (default: 5): ").strip()
+            top_k = int(top_k_input) if top_k_input.isdigit() else 5
+
+            try:
+                indexer.free_query(question, top_k)
+            except Exception as e:
+                print(f"\n[X] Query failed: {e}")
+                debug_log(f"Query error: {str(e)}")
+
+        return
+
+    # AI mode (original behavior)
+    print("\n[OK] Using AI mode - LLM will synthesize answers")
     print("[i] Commands: 'back' or 'exit' to return, '/filter' to change filters")
     print()
 

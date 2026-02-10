@@ -40,6 +40,23 @@ class IndexerConfig:
         self.use_metadata_filters = self._parse_bool("USE_METADATA_FILTERS", True)
         self.include_source_context = self._parse_bool("INCLUDE_SOURCE_CONTEXT", True)
 
+        # Embedding configuration
+        self.embed_model_type: str = os.getenv("EMBED_MODEL_TYPE", "local").lower()
+
+        # Validate and default invalid types
+        if self.embed_model_type not in ["local", "openai"]:
+            print(f"[!] Invalid EMBED_MODEL_TYPE '{self.embed_model_type}', defaulting to 'local'")
+            self.embed_model_type = "local"
+
+        # HuggingFace configuration
+        self.embed_model_name: str = os.getenv("EMBED_MODEL_NAME", "BAAI/bge-large-en-v1.5")
+
+        # OpenAI embeddings configuration
+        # Fallback to API_KEY if EMBED_API_KEY not set (single source of truth)
+        self.embed_api_key: str = os.getenv("EMBED_API_KEY") or os.getenv("API_KEY", "")
+        self.embed_api_base: str = os.getenv("EMBED_API_BASE", "")
+        self.embed_openai_model: str = os.getenv("EMBED_OPENAI_MODEL", "text-embedding-ada-002")
+
         # File type mappings
         self.language_extensions = self._build_language_extensions()
         self.file_categories = self._build_file_categories()
