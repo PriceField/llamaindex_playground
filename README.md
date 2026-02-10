@@ -380,7 +380,10 @@ AppFactory (DI Container)
 - Add new language: 2 new files, 0 modifications
 - SOLID violations: All fixed ✅
 
-For detailed refactoring analysis, see:
-- [REFACTOR_PLAN.md](REFACTOR_PLAN.md) - Full SOLID analysis
-- [PHASE4_PROGRESS.md](PHASE4_PROGRESS.md) - Current progress tracking
-- [MEMORY.md](.claude/projects/c--Git-llamaindex-playground/memory/MEMORY.md) - Project memory
+## Documentation
+
+For detailed refactoring analysis and guides, see the **[docs/](docs/)** folder:
+- [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md) - Full SOLID analysis
+- [docs/PHASE4_PROGRESS.md](docs/PHASE4_PROGRESS.md) - Current progress tracking
+- [docs/QUICKSTART.md](docs/QUICKSTART.md) - Quick start guide
+- [docs/TESTING.md](docs/TESTING.md) - Testing guidelines
