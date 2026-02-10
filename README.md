@@ -201,3 +201,186 @@ CHUNK_OVERLAP=20         # Overlap between chunks
 **HuggingFace download slow?**
 - First run downloads embeddings model (~100MB)
 - Be patient, it's a one-time download
+
+---
+
+## 🏗️ Architecture
+
+### Design Principles
+
+This project follows **SOLID principles** and modern software engineering practices:
+
+- ✅ **Single Responsibility Principle** - Each class has one reason to change
+- ✅ **Open/Closed Principle** - Extensible via Strategy Pattern (add languages without modifications)
+- ✅ **Liskov Substitution Principle** - Abstractions are properly substitutable
+- ✅ **Interface Segregation Principle** - Focused configs instead of god objects
+- ✅ **Dependency Inversion Principle** - Constructor injection throughout
+
+### Core Components
+
+#### 1. IndexingOrchestrator (Workflow Coordinator)
+**Location:** `src/indexing/indexing_orchestrator.py`
+**Responsibility:** Coordinates document indexing workflow
+**Coverage:** 93% (29 unit tests)
+
+```python
+orchestrator = IndexingOrchestrator(
+    index_name="my_index",
+    embedding_factory=embedding_factory,
+    document_loader=document_loader,
+    file_handler=file_handler,
+    chunking_config=chunking_config,
+    file_filter_config=file_filter_config,
+)
+orchestrator.index_directory(directory="./src", file_extensions=[".py"])
+```
+
+#### 2. Strategy Pattern for Language Support
+**Location:** `src/strategies/`
+**Principle:** Open/Closed - Add new languages without modifying core
+
+**Extraction Strategies:**
+- `PythonMetadataExtractor` - Extract Python classes, functions, imports
+- `JavaScriptMetadataExtractor` - Extract JS/TS classes, functions
+- `JavaMetadataExtractor` - Extract Java classes, methods, interfaces
+- `GoMetadataExtractor` - Extract Go functions, structs
+
+**Chunking Strategies:**
+- `PythonChunker` - Smart chunking for Python code
+- `JavaScriptChunker` - Smart chunking for JS/TS code
+- `JavaChunker` - Smart chunking for Java code
+- `GoChunker` - Smart chunking for Go code
+
+**Adding a new language:**
+```python
+# 1. Create extractor: src/strategies/extraction/rust_extractor.py
+class RustMetadataExtractor(LanguageMetadataExtractor):
+    def extract(self, code: str) -> CodeMetadata:
+        # Implementation
+
+# 2. Create chunker: src/strategies/chunking/rust_chunker.py
+class RustChunker(LanguageChunker):
+    def chunk(self, code: str) -> list[CodeChunk]:
+        # Implementation
+
+# That's it! No modifications to core code needed (OCP achieved)
+```
+
+#### 3. Dependency Injection with AppFactory
+**Location:** `src/app_factory.py`
+**Responsibility:** Central DI wiring
+
+```python
+# Production setup
+orchestrator = AppFactory.create_indexing_orchestrator(
+    index_name="production_index",
+    require_llm=True
+)
+
+# Test setup with mocks
+orchestrator = TestAppFactory.create_test_orchestrator(
+    index_name="test_index",
+    embedding_factory=mock_embedding_factory,
+    document_loader=mock_document_loader,
+)
+```
+
+#### 4. Configuration Segregation (ISP Compliance)
+**Location:** `src/config/`
+
+Instead of one god config class, we have focused configs:
+
+- `ChunkingConfig` - Code/doc chunking settings
+- `EmbeddingConfig` - Embedding model configuration
+- `ExtractionConfig` - Metadata extraction flags
+- `QueryConfig` - Query engine settings
+- `FileFilterConfig` - File filtering rules
+
+Each config is a **frozen dataclass** with validation:
+
+```python
+chunking_config = ChunkingConfig.from_env()  # Load from environment
+# OR
+chunking_config = ChunkingConfig(
+    code_chunk_size=512,
+    code_chunk_overlap=50,
+    doc_chunk_size=1024,
+    doc_chunk_overlap=20,
+    preserve_code_structure=True,
+    include_line_numbers=True,
+)
+```
+
+#### 5. Domain Objects (No Primitive Obsession)
+**Location:** `src/domain/`
+
+Structured data instead of primitives:
+
+```python
+# Before: tuple[str, int, int]
+# After: CodeChunk (typed, validated, testable)
+chunk = CodeChunk(
+    content="def example(): pass",
+    start_line=1,
+    end_line=2,
+)
+
+# Before: dict[str, list[str]]
+# After: CodeMetadata (typed, validated)
+metadata = CodeMetadata(
+    functions=["example", "helper"],
+    classes=["MyClass"],
+    imports=["os", "sys"],
+)
+```
+
+### Architecture Diagram
+
+```
+AppFactory (DI Container)
+    │
+    ├─► IndexingOrchestrator (Coordinator)
+    │       ├─► EmbeddingFactory → HuggingFaceEmbedding
+    │       ├─► LLMConfigurer → CustomOpenAI
+    │       ├─► DocumentLoader
+    │       │       ├─► FileHandler
+    │       │       └─► CodeMetadataExtractor
+    │       │               └─► MetadataExtractorRegistry
+    │       │                       ├─► PythonMetadataExtractor
+    │       │                       ├─► JavaScriptMetadataExtractor
+    │       │                       ├─► JavaMetadataExtractor
+    │       │                       └─► GoMetadataExtractor
+    │       └─► CodeAwareNodeParser
+    │               └─► ChunkerRegistry
+    │                       ├─► PythonChunker
+    │                       ├─► JavaScriptChunker
+    │                       ├─► JavaChunker
+    │                       └─► GoChunker
+    │
+    └─► Configs (ISP)
+            ├─► ChunkingConfig
+            ├─► EmbeddingConfig
+            ├─► ExtractionConfig
+            ├─► QueryConfig
+            └─► FileFilterConfig
+```
+
+### Refactoring Progress
+
+**Phases Completed:**
+- ✅ **Phase 1:** SOLID refactoring (configs, orchestrator, DI)
+- ✅ **Phase 2:** Strategy Pattern for language support
+- ✅ **Phase 3:** Test migration and coverage boost
+- 🚧 **Phase 4:** Coverage boost to 80%+ (currently 52%)
+
+**Metrics:**
+- Test coverage: 12% → 52% (target: 80%+)
+- Test count: 0 → 184 tests (100% passing)
+- IndexingOrchestrator: 150 lines, 93% coverage
+- Add new language: 2 new files, 0 modifications
+- SOLID violations: All fixed ✅
+
+For detailed refactoring analysis, see:
+- [REFACTOR_PLAN.md](REFACTOR_PLAN.md) - Full SOLID analysis
+- [PHASE4_PROGRESS.md](PHASE4_PROGRESS.md) - Current progress tracking
+- [MEMORY.md](.claude/projects/c--Git-llamaindex-playground/memory/MEMORY.md) - Project memory

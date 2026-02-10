@@ -15,11 +15,11 @@ from pathlib import Path
 
 from llama_index.core import (
     Settings,
+    SimpleDirectoryReader,
     StorageContext,
     VectorStoreIndex,
     load_index_from_storage,
 )
-from llama_index.readers.file import SimpleDirectoryReader
 
 from config.chunking_config import ChunkingConfig
 from config.file_filter_config import FileFilterConfig

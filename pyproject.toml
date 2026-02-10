@@ -9,6 +9,7 @@ disable = ["C0111", "C0103"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=html --cov-report=term"
+norecursedirs = ["tests/old", ".*", "build", "dist", "venv", ".venv"]
 
 [tool.pyright]
 include = ["src", "tests"]
