@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from config import IndexerConfig
+    from config.chunking_config import ChunkingConfig
 
 
 class CodeAwareNodeParser(NodeParser):
@@ -28,6 +29,40 @@ class CodeAwareNodeParser(NodeParser):
     def config(self) -> "IndexerConfig":
         """Get configuration."""
         return getattr(self, '_config', None)
+
+    @classmethod
+    def from_config(cls, chunking_config: "ChunkingConfig", **kwargs: Any) -> "CodeAwareNodeParser":
+        """Create CodeAwareNodeParser from ChunkingConfig.
+
+        This factory method allows creating the parser with the new ChunkingConfig
+        instead of the legacy IndexerConfig.
+
+        Args:
+            chunking_config: ChunkingConfig instance with chunking settings
+            **kwargs: Additional arguments for base NodeParser
+
+        Returns:
+            CodeAwareNodeParser instance
+
+        Note:
+            This creates a temporary config object that only contains chunking-related
+            attributes. This is a bridge during refactoring.
+        """
+        # Create a minimal config object with just the chunking attributes
+        # This avoids needing the full IndexerConfig
+        class MinimalConfig:
+            """Minimal config with only chunking attributes."""
+
+            def __init__(self, chunking_config: "ChunkingConfig"):
+                self.code_chunk_size = chunking_config.code_chunk_size
+                self.code_chunk_overlap = chunking_config.code_chunk_overlap
+                self.doc_chunk_size = chunking_config.doc_chunk_size
+                self.doc_chunk_overlap = chunking_config.doc_chunk_overlap
+                self.preserve_code_structure = chunking_config.preserve_code_structure
+                self.include_line_numbers = chunking_config.include_line_numbers
+
+        minimal_config = MinimalConfig(chunking_config)
+        return cls(minimal_config, **kwargs)  # type: ignore
 
     def _parse_nodes(
         self,
