@@ -1,24 +1,43 @@
-"""Extract code-specific metadata from source files."""
-import re
+"""Extract code-specific metadata from source files (REFACTORED).
+
+This module now uses the Strategy Pattern with MetadataExtractorRegistry.
+The old hard-coded if/elif chains have been replaced with pluggable strategies.
+
+See: strategies/extraction/ for language-specific implementations.
+
+MIGRATION NOTE:
+- Old implementation had 242 lines with hard-coded language extractors
+- New implementation uses Strategy Pattern (OCP compliant)
+- Adding new language = register strategy, no modifications to this file
+"""
 from typing import TYPE_CHECKING
+from strategies.extraction.registry import MetadataExtractorRegistry
 
 if TYPE_CHECKING:
     from config import IndexerConfig
 
 
 class CodeMetadataExtractor:
-    """Extract metadata from code files (functions, classes, imports)."""
+    """Extract metadata from code files using strategy pattern.
 
-    def __init__(self, config: "IndexerConfig") -> None:
-        """Initialize with configuration.
+    REFACTORED for SOLID compliance:
+    - Open/Closed Principle: Adding new language = register strategy, no modifications
+    - Single Responsibility: Delegates to language-specific strategies
+    - Dependency Inversion: Depends on abstraction (LanguageMetadataExtractor)
+    """
+
+    def __init__(self, config: "IndexerConfig", registry: MetadataExtractorRegistry | None = None) -> None:
+        """Initialize with configuration and strategy registry.
 
         Args:
             config: IndexerConfig instance
+            registry: Optional MetadataExtractorRegistry (creates default if None)
         """
         self.config = config
+        self.registry = registry if registry is not None else MetadataExtractorRegistry()
 
     def extract_metadata(self, file_path: str, content: str, language: str) -> dict[str, list[str]]:
-        """Extract code metadata based on language.
+        """Extract code metadata using appropriate language strategy.
 
         Args:
             file_path: Path to the file
@@ -28,214 +47,23 @@ class CodeMetadataExtractor:
         Returns:
             Dictionary containing extracted metadata (functions, classes, imports)
         """
-        metadata = {}
-
+        # Skip if all extraction flags are disabled
         if not self.config.extract_functions and not self.config.extract_classes and not self.config.extract_imports:
-            return metadata
+            return {}
 
-        # Dispatch to language-specific extractors
-        if language == "python":
-            metadata = self._extract_python_metadata(content)
-        elif language in ["javascript", "typescript"]:
-            metadata = self._extract_javascript_metadata(content)
-        elif language == "java":
-            metadata = self._extract_java_metadata(content)
-        elif language == "go":
-            metadata = self._extract_go_metadata(content)
-        # Add more languages as needed
+        # Get appropriate strategy from registry
+        extractor = self.registry.get_by_language(language)
+        if not extractor:
+            # No extractor for this language, return empty metadata
+            return {}
 
-        return metadata
+        # Extract metadata using strategy
+        code_metadata = extractor.extract(
+            content=content,
+            extract_functions=self.config.extract_functions,
+            extract_classes=self.config.extract_classes,
+            extract_imports=self.config.extract_imports,
+        )
 
-    def _extract_python_metadata(self, content: str) -> dict[str, list[str]]:
-        """Extract Python-specific metadata.
-
-        Args:
-            content: Python source code
-
-        Returns:
-            Dictionary with imports, classes, and functions
-        """
-        metadata = {}
-
-        if self.config.extract_imports:
-            # Extract imports
-            imports = []
-            import_pattern = r'^(?:from\s+(\S+)\s+)?import\s+(.+)$'
-            for match in re.finditer(import_pattern, content, re.MULTILINE):
-                if match.group(1):
-                    imports.append(f"from {match.group(1)} import {match.group(2)}")
-                else:
-                    imports.append(f"import {match.group(2)}")
-            if imports:
-                metadata["imports"] = imports
-
-        if self.config.extract_classes:
-            # Extract class definitions
-            classes = []
-            class_pattern = r'^class\s+(\w+)(?:\(([^)]*)\))?:'
-            for match in re.finditer(class_pattern, content, re.MULTILINE):
-                class_name = match.group(1)
-                base_classes = match.group(2) if match.group(2) else ""
-                classes.append(f"{class_name}({base_classes})" if base_classes else class_name)
-            if classes:
-                metadata["classes"] = classes
-
-        if self.config.extract_functions:
-            # Extract function definitions
-            functions = []
-            func_pattern = r'^(?:async\s+)?def\s+(\w+)\s*\(([^)]*)\)'
-            for match in re.finditer(func_pattern, content, re.MULTILINE):
-                func_name = match.group(1)
-                params = match.group(2).strip()
-                functions.append(f"{func_name}({params})" if params else func_name)
-            if functions:
-                metadata["functions"] = functions
-
-        return metadata
-
-    def _extract_javascript_metadata(self, content: str) -> dict[str, list[str]]:
-        """Extract JavaScript/TypeScript metadata.
-
-        Args:
-            content: JavaScript/TypeScript source code
-
-        Returns:
-            Dictionary with imports, classes, and functions
-        """
-        metadata = {}
-
-        if self.config.extract_imports:
-            imports = []
-            # ES6 imports
-            import_pattern = r'^import\s+(?:{[^}]+}|\S+)\s+from\s+["\']([^"\']+)["\']'
-            for match in re.finditer(import_pattern, content, re.MULTILINE):
-                imports.append(match.group(0))
-            # Require statements
-            require_pattern = r'require\(["\']([^"\']+)["\']\)'
-            for match in re.finditer(require_pattern, content):
-                imports.append(match.group(0))
-            if imports:
-                metadata["imports"] = imports
-
-        if self.config.extract_classes:
-            classes = []
-            class_pattern = r'^(?:export\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?'
-            for match in re.finditer(class_pattern, content, re.MULTILINE):
-                class_name = match.group(1)
-                extends = f" extends {match.group(2)}" if match.group(2) else ""
-                classes.append(f"{class_name}{extends}")
-            if classes:
-                metadata["classes"] = classes
-
-        if self.config.extract_functions:
-            functions = []
-            # Function declarations
-            func_pattern = r'^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)'
-            for match in re.finditer(func_pattern, content, re.MULTILINE):
-                func_name = match.group(1)
-                params = match.group(2).strip()
-                functions.append(f"{func_name}({params})" if params else func_name)
-            # Arrow functions assigned to const/let/var
-            arrow_pattern = r'^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*=>'
-            for match in re.finditer(arrow_pattern, content, re.MULTILINE):
-                func_name = match.group(1)
-                params = match.group(2).strip()
-                functions.append(f"{func_name}({params})" if params else func_name)
-            if functions:
-                metadata["functions"] = functions
-
-        return metadata
-
-    def _extract_java_metadata(self, content: str) -> dict[str, list[str]]:
-        """Extract Java metadata.
-
-        Args:
-            content: Java source code
-
-        Returns:
-            Dictionary with imports, classes, and functions
-        """
-        metadata = {}
-
-        if self.config.extract_imports:
-            imports = []
-            import_pattern = r'^import\s+(?:static\s+)?([^;]+);'
-            for match in re.finditer(import_pattern, content, re.MULTILINE):
-                imports.append(match.group(1).strip())
-            if imports:
-                metadata["imports"] = imports
-
-        if self.config.extract_classes:
-            classes = []
-            class_pattern = r'^(?:public\s+)?(?:abstract\s+)?(?:class|interface)\s+(\w+)(?:\s+extends\s+(\w+))?'
-            for match in re.finditer(class_pattern, content, re.MULTILINE):
-                class_name = match.group(1)
-                extends = f" extends {match.group(2)}" if match.group(2) else ""
-                classes.append(f"{class_name}{extends}")
-            if classes:
-                metadata["classes"] = classes
-
-        if self.config.extract_functions:
-            functions = []
-            # Method declarations
-            method_pattern = r'(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(([^)]*)\)'
-            for match in re.finditer(method_pattern, content):
-                func_name = match.group(1)
-                params = match.group(2).strip()
-                functions.append(f"{func_name}({params})" if params else func_name)
-            if functions:
-                metadata["functions"] = functions
-
-        return metadata
-
-    def _extract_go_metadata(self, content: str) -> dict[str, list[str]]:
-        """Extract Go metadata.
-
-        Args:
-            content: Go source code
-
-        Returns:
-            Dictionary with imports, functions, and structs
-        """
-        metadata = {}
-
-        if self.config.extract_imports:
-            imports = []
-            # Single import
-            import_pattern = r'^import\s+"([^"]+)"'
-            for match in re.finditer(import_pattern, content, re.MULTILINE):
-                imports.append(match.group(1))
-            # Multi-line import
-            multi_import_pattern = r'import\s+\(([\s\S]*?)\)'
-            for match in re.finditer(multi_import_pattern, content):
-                import_block = match.group(1)
-                for line in import_block.split('\n'):
-                    line = line.strip()
-                    if line and '"' in line:
-                        pkg = re.search(r'"([^"]+)"', line)
-                        if pkg:
-                            imports.append(pkg.group(1))
-            if imports:
-                metadata["imports"] = imports
-
-        if self.config.extract_functions:
-            functions = []
-            # Function declarations (including methods)
-            func_pattern = r'^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(([^)]*)\)'
-            for match in re.finditer(func_pattern, content, re.MULTILINE):
-                func_name = match.group(1)
-                params = match.group(2).strip()
-                functions.append(f"{func_name}({params})" if params else func_name)
-            if functions:
-                metadata["functions"] = functions
-
-        if self.config.extract_classes:
-            # Go uses structs instead of classes
-            structs = []
-            struct_pattern = r'^type\s+(\w+)\s+struct'
-            for match in re.finditer(struct_pattern, content, re.MULTILINE):
-                structs.append(match.group(1))
-            if structs:
-                metadata["structs"] = structs
-
-        return metadata
+        # Convert CodeMetadata to dict for backward compatibility
+        return code_metadata.to_dict()

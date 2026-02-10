@@ -27,6 +27,7 @@ from embedding.embedding_factory import EmbeddingFactory
 from file_handlers import FileHandler
 from code_chunking import CodeAwareNodeParser
 from loading.document_loader import DocumentLoader
+from strategies.chunking.registry import ChunkerRegistry
 
 
 def debug_log(message: str) -> None:
@@ -55,6 +56,7 @@ class IndexingOrchestrator:
         file_handler: FileHandler,
         chunking_config: ChunkingConfig,
         file_filter_config: FileFilterConfig,
+        chunker_registry: ChunkerRegistry | None = None,
     ):
         """Initialize orchestrator with dependencies.
 
@@ -65,6 +67,7 @@ class IndexingOrchestrator:
             file_handler: Handler for file operations
             chunking_config: Configuration for code chunking
             file_filter_config: Configuration for file filtering
+            chunker_registry: Optional registry for chunking strategies (Phase 2)
         """
         self.index_name = index_name
         self.storage_dir = Path("storage") / index_name
@@ -75,6 +78,7 @@ class IndexingOrchestrator:
         self.file_handler = file_handler
         self.chunking_config = chunking_config
         self.file_filter_config = file_filter_config
+        self.chunker_registry = chunker_registry if chunker_registry is not None else ChunkerRegistry()
 
         # Index state
         self.index: VectorStoreIndex | None = None
@@ -89,9 +93,12 @@ class IndexingOrchestrator:
         # Setup embeddings using factory
         Settings.embed_model = self.embedding_factory.create()
 
-        # Setup code-aware node parser
-        Settings.node_parser = CodeAwareNodeParser.from_config(self.chunking_config)
-        print("[OK] Code-aware chunking enabled")
+        # Setup code-aware node parser with chunking registry (Phase 2)
+        Settings.node_parser = CodeAwareNodeParser.from_config(
+            chunking_config=self.chunking_config,
+            registry=self.chunker_registry,
+        )
+        print("[OK] Code-aware chunking enabled with strategy pattern")
 
     # ========================================================================
     # Index Management

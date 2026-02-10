@@ -24,6 +24,8 @@ from loading.document_loader import DocumentLoader
 from indexing.indexing_orchestrator import IndexingOrchestrator
 from llm.llm_configurer import LLMConfig, LLMConfigurer
 from config import IndexerConfig
+from strategies.extraction.registry import MetadataExtractorRegistry
+from strategies.chunking.registry import ChunkerRegistry
 
 
 class AppFactory:
@@ -76,6 +78,10 @@ class AppFactory:
         language_detector = LanguageDetector.default()
         file_categorizer = FileCategorizer.default()
 
+        # Create strategy registries (Phase 2 refactoring)
+        metadata_extractor_registry = MetadataExtractorRegistry()
+        chunker_registry = ChunkerRegistry()
+
         # ====================================================================
         # Create Service Components
         # ====================================================================
@@ -88,9 +94,12 @@ class AppFactory:
         legacy_config = IndexerConfig()  # Temporary bridge
         file_handler = FileHandler(legacy_config)
 
-        # Create code extractor (depends on extraction config)
-        # Note: CodeMetadataExtractor currently uses IndexerConfig, will migrate later
-        code_extractor = CodeMetadataExtractor(legacy_config)  # Temporary bridge
+        # Create code extractor with strategy registry (REFACTORED in Phase 2)
+        # Note: CodeMetadataExtractor still uses IndexerConfig for extraction flags
+        code_extractor = CodeMetadataExtractor(
+            config=legacy_config,
+            registry=metadata_extractor_registry,
+        )
 
         # Create document loader (depends on file handler and code extractor)
         document_loader = DocumentLoader(
@@ -109,6 +118,7 @@ class AppFactory:
             file_handler=file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            chunker_registry=chunker_registry,  # Phase 2: inject chunking registry
         )
 
         # ====================================================================
@@ -141,6 +151,7 @@ class AppFactory:
         file_handler: FileHandler,
         chunking_config: ChunkingConfig,
         file_filter_config: FileFilterConfig,
+        chunker_registry: ChunkerRegistry | None = None,
     ) -> IndexingOrchestrator:
         """Create IndexingOrchestrator with custom dependencies.
 
@@ -153,6 +164,7 @@ class AppFactory:
             file_handler: Custom file handler
             chunking_config: Custom chunking configuration
             file_filter_config: Custom file filter configuration
+            chunker_registry: Optional custom chunker registry (Phase 2)
 
         Returns:
             IndexingOrchestrator with injected dependencies
@@ -164,6 +176,7 @@ class AppFactory:
             file_handler=file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            chunker_registry=chunker_registry,
         )
 
     @staticmethod
