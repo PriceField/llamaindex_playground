@@ -100,6 +100,7 @@ class LLMConfigurer:
             api_base=self.config.api_base,
             model=self.config.model_name,
             temperature=self.config.temperature,
+            max_tokens=4096,  # Add explicit max_tokens for custom endpoints
         )
 
         print(f"[OK] LLM configured: {self.config.model_name}")

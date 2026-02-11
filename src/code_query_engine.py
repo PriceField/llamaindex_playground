@@ -1,12 +1,60 @@
 """Enhanced query engine for code search."""
-from llama_index.core import VectorStoreIndex
+from llama_index.core import VectorStoreIndex, Settings
 from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.postprocessor import SimilarityPostprocessor
-from llama_index.core.response_synthesizers import get_response_synthesizer
-from llama_index.core.prompts import PromptTemplate
+from llama_index.core.schema import QueryBundle
+from llama_index.core.base.response.schema import Response
 
 from config import QueryConfig
+
+
+class CustomQueryEngine:
+    """Custom query engine that manually handles retrieval and synthesis.
+
+    This bypasses LlamaIndex's response_synthesizer which has compatibility issues
+    with custom OpenAI endpoints.
+    """
+
+    def __init__(self, retriever: VectorIndexRetriever, prompt_template: str):
+        """Initialize with retriever and prompt template.
+
+        Args:
+            retriever: VectorIndexRetriever for document retrieval
+            prompt_template: Prompt template string with {context_str} and {query_str} placeholders
+        """
+        self.retriever = retriever
+        self.prompt_template = prompt_template
+
+    def query(self, query_str: str) -> Response:
+        """Execute query with manual synthesis.
+
+        Args:
+            query_str: Query string
+
+        Returns:
+            Response object with answer and source nodes
+        """
+        # 1. Retrieve nodes
+        nodes = self.retriever.retrieve(QueryBundle(query_str=query_str))
+
+        # 2. Build context from retrieved nodes
+        context_parts = [node.text for node in nodes]
+        context_str = "\n\n".join(context_parts)
+
+        # 3. Build prompt
+        prompt = self.prompt_template.format(
+            context_str=context_str,
+            query_str=query_str
+        )
+
+        # 4. Call LLM directly
+        llm_response = Settings.llm.complete(prompt)
+
+        # 5. Create Response object
+        return Response(
+            response=llm_response.text,
+            source_nodes=nodes,
+            metadata={"query_str": query_str}
+        )
 
 
 class CodeQueryEngine:
@@ -31,7 +79,7 @@ class CodeQueryEngine:
         language_filter: str | None = None,
         category_filter: str | None = None,
         file_pattern: str | None = None,
-    ) -> RetrieverQueryEngine:
+    ) -> CustomQueryEngine:
         """Create query engine with optional metadata filters.
 
         Args:
@@ -41,47 +89,31 @@ class CodeQueryEngine:
             file_pattern: Filter by file pattern (not implemented yet)
 
         Returns:
-            Configured query engine
+            Configured custom query engine
         """
         top_k = similarity_top_k or self.config.code_similarity_top_k
 
-        # Create retriever
+        # Create retriever with explicit embed_model from index
         retriever = VectorIndexRetriever(
             index=self.index,
             similarity_top_k=top_k,
+            embed_model=self.index._embed_model,
         )
 
-        # Create post-processors
-        postprocessors = [
-            SimilarityPostprocessor(similarity_cutoff=0.5),
-        ]
+        # Get prompt template
+        prompt_template = self._get_code_qa_prompt_string()
 
-        # Custom prompt for code queries
-        qa_prompt_template = self._get_code_qa_prompt()
+        # Return custom query engine
+        return CustomQueryEngine(retriever, prompt_template)
 
-        # Create response synthesizer
-        response_synthesizer = get_response_synthesizer(
-            response_mode="compact",
-            text_qa_template=qa_prompt_template,
-        )
-
-        # Create query engine
-        query_engine = RetrieverQueryEngine(
-            retriever=retriever,
-            response_synthesizer=response_synthesizer,
-            node_postprocessors=postprocessors,
-        )
-
-        return query_engine
-
-    def _get_code_qa_prompt(self) -> PromptTemplate:
-        """Get custom QA prompt for code queries.
+    def _get_code_qa_prompt_string(self) -> str:
+        """Get custom QA prompt template string for code queries.
 
         Returns:
-            PromptTemplate configured for code search
+            Prompt template string with {context_str} and {query_str} placeholders
         """
         if self.config.include_source_context:
-            template = (
+            return (
                 "Context information is below.\n"
                 "---------------------\n"
                 "{context_str}\n"
@@ -97,7 +129,7 @@ class CodeQueryEngine:
                 "Answer: "
             )
         else:
-            template = (
+            return (
                 "Context information is below.\n"
                 "---------------------\n"
                 "{context_str}\n"
@@ -106,8 +138,6 @@ class CodeQueryEngine:
                 "Query: {query_str}\n"
                 "Answer: "
             )
-
-        return PromptTemplate(template)
 
     def format_response_with_sources(self, response: object, top_k: int = 5) -> str:
         """Format response with enhanced source information.
@@ -125,7 +155,10 @@ class CodeQueryEngine:
         output.append("=" * 60)
         output.append("ANSWER:")
         output.append("=" * 60)
-        output.append(str(response))
+        # Use response.response attribute which contains the actual LLM response text
+        # Fall back to str(response) if the attribute doesn't exist
+        response_text = response.response if hasattr(response, 'response') else str(response)
+        output.append(response_text)
         output.append("")
 
         # Sources with enhanced metadata
