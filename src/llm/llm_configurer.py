@@ -91,6 +91,10 @@ class LLMConfigurer:
         """
         print("\n[*] Setting up LLM...")
 
+        # Set OPENAI_API_KEY env var for llama-index compatibility
+        # (llama-index's OpenAI class checks for this env var internally)
+        os.environ["OPENAI_API_KEY"] = self.config.api_key
+
         Settings.llm = CustomOpenAI(
             api_key=self.config.api_key,
             api_base=self.config.api_base,

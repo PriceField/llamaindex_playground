@@ -76,9 +76,7 @@ class AppFactory:
         file_filter_config = FileFilterConfig.from_env()
         query_config = QueryConfig.from_env()
 
-        # Create utility components
-        language_detector = LanguageDetector.default()
-        file_categorizer = FileCategorizer.default()
+        # Create utility components (handled by IndexerConfig bridge)
 
         # Create strategy registries (Phase 2 refactoring)
         metadata_extractor_registry = MetadataExtractorRegistry()
