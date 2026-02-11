@@ -11,15 +11,15 @@
 
 ### Coverage Milestones
 - **Starting Coverage:** 44% (Phase 3 complete)
-- **Current Coverage:** 52%
+- **Current Coverage:** 54%
 - **Target Coverage:** 80%+
-- **Progress:** 28% of 36% journey (65% to goal)
+- **Progress:** 10 of 36 percentage points (28% to goal)
 
 ### Test Count
 - **Phase 3 End:** 155 tests
-- **Current:** 184 tests
-- **Added:** +29 tests
-- **Pass Rate:** 100% (184/184 passing)
+- **Current:** 217 tests
+- **Added:** +62 tests (29 IndexingOrchestrator + 33 IndexerConfig)
+- **Pass Rate:** 100% (217/217 passing)
 
 ---
 
@@ -91,9 +91,74 @@
 
 ---
 
+### Session 2: Repository Cleanup & IndexerConfig Bridge (Feb 11, 2026)
+
+**Critical Blocker Resolved:**
+- Created [src/config/indexer_config.py](../src/config/indexer_config.py) - Backward-compatible bridge class
+- Unblocked 4 files that import IndexerConfig: `app_factory.py`, `code_chunking.py`, `code_extractors.py`, `main.py`
+
+**Test File Created:**
+- [tests/test_indexer_config_bridge.py](../tests/test_indexer_config_bridge.py) - 33 comprehensive unit tests
+
+**Coverage Improvements:**
+- `indexer_config.py`: 0% → **100%** (86 statements, 0 missed)
+- Overall project: 52% → **54%** (+2 percentage points)
+
+**Design Pattern:** Adapter + Facade Pattern
+1. **Aggregation:** Wraps 5 focused config classes (Chunking, Extraction, Embedding, Query, FileFilter)
+2. **Property Delegation:** 22 properties delegate to appropriate config classes
+3. **Method Delegation:** `detect_language()` and `detect_category()` delegate to utility classes
+4. **Helper Method:** `create_file_handler()` resolves FileHandler constructor mismatch
+5. **Deprecation:** Clear warnings for Phase 4 migration
+
+**Test Coverage by Category:**
+1. **Construction Tests** (3 tests)
+   - ✅ Zero-argument constructor
+   - ✅ Internal configs initialized
+   - ✅ No exceptions on valid environment
+
+2. **Property Delegation Tests** (22 tests)
+   - ✅ All 22 properties verified
+   - ✅ Special test: `include_line_numbers` routes to ChunkingConfig (not ExtractionConfig)
+   - ✅ Chunking, Extraction, Embedding, Query, FileFilter properties
+
+3. **Method Delegation Tests** (2 tests)
+   - ✅ `detect_language()` delegates to LanguageDetector
+   - ✅ `detect_category()` delegates to FileCategorizer
+
+4. **Backward Compatibility Tests** (5 tests)
+   - ✅ Works with CodeMetadataExtractor
+   - ✅ `create_file_handler()` returns correct FileHandler
+   - ✅ `language_extensions` property backward compatible
+   - ✅ `file_categories` property backward compatible
+   - ✅ All 22 properties exist
+
+5. **Integration Tests** (2 tests)
+   - ✅ Full workflow (construct → access → methods → create components)
+   - ✅ No regressions in property values
+
+**Files Modified:**
+- ✅ `src/config/__init__.py` - Export IndexerConfig
+- ✅ `src/main.py` (line 218) - Use `config.create_file_handler()`
+- ✅ `src/app_factory.py` (lines 95, 227) - Use `config.create_file_handler()`
+
+**Repository Organization:**
+- ✅ Moved `tests/test_indexing_orchestrator.py` → `tests/unit/` (proper structure)
+- ✅ Deleted `tests/test_api.py` (utility script, not a test)
+- ✅ Deleted `demo_free_vs_paid.py` (old architecture, documented elsewhere)
+- ✅ Added `docs/REPOSITORY_CLEANUP.md` (cleanup plan documentation)
+
+**Impact:**
+- Unblocked Phase 4 progress (was critical blocker)
+- Maintains backward compatibility during refactoring
+- Clear deprecation path for Phase 4 migration
+- Improved test organization and coverage
+
+---
+
 ## 🎯 Remaining Work to Reach 80%
 
-**Gap Analysis:** Need 28% more coverage (564 statements)
+**Gap Analysis:** Need 26% more coverage (~546 statements)
 
 ### High Priority Modules (266 statements, ~13% boost)
 
@@ -143,22 +208,23 @@
 
 **Recommended Order:**
 1. ✅ IndexingOrchestrator (DONE - 93% coverage)
-2. 🔜 Domain objects (Low effort, 3% boost)
-3. 🔜 document_loader.py (Medium effort, 1.6% boost)
-4. 🔜 llm modules (Medium effort, 2.6% boost)
-5. 🔜 free_query_mode.py (Medium effort, 2.1% boost)
-6. 🔜 app_factory.py (High effort, 4% boost) - May defer
-7. 🔜 Integration tests (5% boost)
+2. ✅ IndexerConfig bridge (DONE - 100% coverage)
+3. 🔜 Domain objects (Low effort, ~3% boost)
+4. 🔜 document_loader.py (Medium effort, ~1.6% boost)
+5. 🔜 llm modules (Medium effort, ~2.6% boost)
+6. 🔜 free_query_mode.py (Medium effort, ~2.1% boost)
+7. 🔜 app_factory.py (High effort, ~4% boost) - May defer
+8. 🔜 Integration tests (~5% boost)
 
 **Estimated Path to 80%:**
-- Current: 52%
-- After domain objects: ~55%
-- After document_loader: ~57%
-- After llm modules: ~60%
-- After free_query_mode: ~62%
-- After integration tests: ~67%
-- After app_factory: ~71%
-- **Need additional coverage in existing modules:** ~9% more
+- Current: 54%
+- After domain objects: ~57%
+- After document_loader: ~59%
+- After llm modules: ~62%
+- After free_query_mode: ~64%
+- After integration tests: ~69%
+- After app_factory: ~73%
+- **Need additional coverage in existing modules:** ~7% more
 
 ---
 
@@ -190,15 +256,19 @@
 ## 📈 Coverage Breakdown (Current)
 
 **High Coverage Modules (90%+):**
-- ✅ indexing_orchestrator.py: **93%**
-- ✅ code_chunking.py: **97%**
+- ✅ indexer_config.py: **100%** (NEW - backward-compatibility bridge)
 - ✅ code_query_engine.py: **98%**
-- ✅ file_handlers.py: **100%**
+- ✅ embedding_config.py: **98%**
+- ✅ code_chunking.py: **97%**
 - ✅ embedding_factory.py: **96%**
+- ✅ indexing_orchestrator.py: **93%**
+- ✅ chunking_config.py: **93%**
+- ✅ JavaScriptChunker: **93%**
+- ✅ extraction_config.py: **90%**
+- ✅ file_handlers.py: **100%**
 - ✅ ChunkerRegistry: **100%**
 - ✅ PythonChunker: **98%**
-- ✅ JavaScriptChunker: **93%**
-- ✅ Java/Go extractors: **98-100%**
+- ✅ Python/Go/Java/JavaScript extractors: **98-100%**
 
 **Medium Coverage Modules (60-89%):**
 - 🟡 chunking_config.py: 93%
@@ -262,9 +332,9 @@
 
 ## 📝 Next Session Plan
 
-1. **Quick wins first:** Test domain objects (3% boost, low effort)
-2. **Medium effort:** Test document_loader (1.6% boost)
-3. **Stretch goal:** Test llm modules (2.6% boost)
+1. **Quick wins first:** Test domain objects (~3% boost, low effort)
+2. **Medium effort:** Test document_loader (~1.6% boost)
+3. **Stretch goal:** Test llm modules (~2.6% boost)
 4. **Track progress:** Run coverage after each module
 
-**Expected outcome:** 52% → 60-65% coverage in next session
+**Expected outcome:** 54% → 62-67% coverage in next session
