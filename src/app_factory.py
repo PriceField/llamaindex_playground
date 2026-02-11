@@ -92,7 +92,7 @@ class AppFactory:
         # Create file handler (depends on language detector and categorizer)
         # Note: FileHandler currently uses IndexerConfig, will migrate later
         legacy_config = IndexerConfig()  # Temporary bridge
-        file_handler = FileHandler(legacy_config)
+        file_handler = legacy_config.create_file_handler()
 
         # Create code extractor with strategy registry (REFACTORED in Phase 2)
         # Note: CodeMetadataExtractor still uses IndexerConfig for extraction flags
@@ -224,7 +224,7 @@ class AppFactory:
         """
         # Temporary bridge using legacy config
         legacy_config = IndexerConfig()
-        file_handler = FileHandler(legacy_config)
+        file_handler = legacy_config.create_file_handler()
         code_extractor = CodeMetadataExtractor(legacy_config)
 
         return DocumentLoader(

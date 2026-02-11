@@ -215,7 +215,7 @@ class DocumentIndexer:
 
         # Initialize code-aware components
         self.config = IndexerConfig()
-        self.file_handler = FileHandler(self.config)
+        self.file_handler = self.config.create_file_handler()
         self.code_extractor = CodeMetadataExtractor(self.config)
 
         self._setup_llm_and_embeddings()
