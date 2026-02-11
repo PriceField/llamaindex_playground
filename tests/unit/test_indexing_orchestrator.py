@@ -10,9 +10,11 @@ sys.path.insert(0, "src")
 from indexing.indexing_orchestrator import IndexingOrchestrator, debug_log
 from config.chunking_config import ChunkingConfig
 from config.file_filter_config import FileFilterConfig
+from config.query_config import QueryConfig
 from embedding.embedding_factory import EmbeddingFactory
 from file_handlers import FileHandler
 from loading.document_loader import DocumentLoader
+from llm.llm_configurer import LLMConfigurer
 from strategies.chunking.registry import ChunkerRegistry
 
 
@@ -73,12 +75,30 @@ def mock_chunker_registry():
 
 
 @pytest.fixture
+def query_config():
+    """Create QueryConfig for testing."""
+    return QueryConfig(
+        code_similarity_top_k=5,
+        use_metadata_filters=True,
+        include_source_context=True,
+    )
+
+
+@pytest.fixture
+def mock_llm_configurer():
+    """Create mock LLMConfigurer."""
+    return Mock(spec=LLMConfigurer)
+
+
+@pytest.fixture
 def orchestrator(
     mock_embedding_factory,
     mock_document_loader,
     mock_file_handler,
     chunking_config,
     file_filter_config,
+    query_config,
+    mock_llm_configurer,
     mock_chunker_registry,
 ):
     """Create IndexingOrchestrator for testing."""
@@ -89,6 +109,8 @@ def orchestrator(
         file_handler=mock_file_handler,
         chunking_config=chunking_config,
         file_filter_config=file_filter_config,
+        query_config=query_config,
+        llm_configurer=mock_llm_configurer,
         chunker_registry=mock_chunker_registry,
     )
 
@@ -108,6 +130,8 @@ class TestInitialization:
         mock_file_handler,
         chunking_config,
         file_filter_config,
+        query_config,
+        mock_llm_configurer,
         mock_chunker_registry,
     ):
         """Test initialization with all dependencies."""
@@ -118,6 +142,8 @@ class TestInitialization:
             file_handler=mock_file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            query_config=query_config,
+            llm_configurer=mock_llm_configurer,
             chunker_registry=mock_chunker_registry,
         )
 
@@ -128,6 +154,8 @@ class TestInitialization:
         assert orchestrator.file_handler == mock_file_handler
         assert orchestrator.chunking_config == chunking_config
         assert orchestrator.file_filter_config == file_filter_config
+        assert orchestrator.query_config == query_config
+        assert orchestrator.llm_configurer == mock_llm_configurer
         assert orchestrator.chunker_registry == mock_chunker_registry
         assert orchestrator.index is None  # Not initialized yet
 
@@ -138,6 +166,7 @@ class TestInitialization:
         mock_file_handler,
         chunking_config,
         file_filter_config,
+        query_config,
     ):
         """Test that default ChunkerRegistry is created if not provided."""
         orchestrator = IndexingOrchestrator(
@@ -147,6 +176,8 @@ class TestInitialization:
             file_handler=mock_file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            query_config=query_config,
+            llm_configurer=None,  # Optional
             chunker_registry=None,  # Not provided
         )
 
@@ -682,21 +713,26 @@ class TestHighLevelWorkflow:
 
 
 class TestQueryInterface:
-    """Test query interface (placeholder)."""
+    """Test query interface."""
 
-    def test_query_raises_not_implemented(self, orchestrator):
-        """Test query raises NotImplementedError (placeholder)."""
+    def test_query_requires_llm_configurer(self, orchestrator):
+        """Test query raises ValueError when LLM not configured."""
         orchestrator.index = Mock()  # Initialize index
+        orchestrator.llm_configurer = None  # No LLM configured
 
-        with pytest.raises(NotImplementedError, match="Query implementation requires"):
+        with pytest.raises(ValueError, match="LLM configuration required"):
             orchestrator.query(question="What does this code do?")
 
-    def test_query_raises_when_index_not_loaded(self, orchestrator):
-        """Test query raises AssertionError when index not loaded."""
+    def test_free_query_loads_index_if_not_loaded(self, orchestrator, capsys):
+        """Test free_query loads index automatically if not loaded."""
         orchestrator.index = None
+        orchestrator.index_exists = Mock(return_value=False)
 
-        with pytest.raises(AssertionError, match="Index must be loaded"):
-            orchestrator.query(question="What does this code do?")
+        # Should print error and return early
+        orchestrator.free_query(question="What does this code do?")
+
+        captured = capsys.readouterr()
+        assert "[X] No index available" in captured.out
 
 
 # ============================================================================

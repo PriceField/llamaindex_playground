@@ -15,6 +15,7 @@ from config.chunking_config import ChunkingConfig
 from config.embedding_config import EmbeddingConfig
 from config.extraction_config import ExtractionConfig
 from config.file_filter_config import FileFilterConfig
+from config.query_config import QueryConfig
 from config.language_detector import LanguageDetector
 from config.file_categorizer import FileCategorizer
 from embedding.embedding_factory import EmbeddingFactory
@@ -73,6 +74,7 @@ class AppFactory:
         embedding_config = EmbeddingConfig.from_env()
         extraction_config = ExtractionConfig.from_env()
         file_filter_config = FileFilterConfig.from_env()
+        query_config = QueryConfig.from_env()
 
         # Create utility components
         language_detector = LanguageDetector.default()
@@ -107,6 +109,16 @@ class AppFactory:
             code_extractor=code_extractor,
         )
 
+        # Create LLM configurer if required (for query operations)
+        llm_configurer: LLMConfigurer | None = None
+        if require_llm:
+            try:
+                llm_config = LLMConfig.from_env()
+                llm_configurer = LLMConfigurer(llm_config)
+            except ValueError as e:
+                print(f"[!] LLM configuration failed: {e}")
+                print("[*] Query operations will use free mode only (no LLM)")
+
         # ====================================================================
         # Create Orchestrator
         # ====================================================================
@@ -118,6 +130,8 @@ class AppFactory:
             file_handler=file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            query_config=query_config,
+            llm_configurer=llm_configurer,
             chunker_registry=chunker_registry,  # Phase 2: inject chunking registry
         )
 
@@ -125,18 +139,8 @@ class AppFactory:
         # Setup Global Settings
         # ====================================================================
 
-        # Setup LLM if required
-        if require_llm:
-            try:
-                llm_config = LLMConfig.from_env()
-                llm_configurer = LLMConfigurer(llm_config)
-                llm_configurer.configure()
-            except ValueError as e:
-                print(f"[!] LLM configuration failed: {e}")
-                print("[*] Continuing in indexing-only mode")
-                LLMConfigurer.skip_configuration()
-        else:
-            LLMConfigurer.skip_configuration()
+        # Note: LLM configuration is deferred to query time (when actually needed)
+        # This allows indexing-only mode without LLM validation
 
         # Setup embeddings and parser (configures Settings.embed_model and Settings.node_parser)
         orchestrator.setup_embeddings_and_parser()
@@ -151,6 +155,8 @@ class AppFactory:
         file_handler: FileHandler,
         chunking_config: ChunkingConfig,
         file_filter_config: FileFilterConfig,
+        query_config: QueryConfig,
+        llm_configurer: LLMConfigurer | None = None,
         chunker_registry: ChunkerRegistry | None = None,
     ) -> IndexingOrchestrator:
         """Create IndexingOrchestrator with custom dependencies.
@@ -164,6 +170,8 @@ class AppFactory:
             file_handler: Custom file handler
             chunking_config: Custom chunking configuration
             file_filter_config: Custom file filter configuration
+            query_config: Custom query configuration
+            llm_configurer: Optional custom LLM configurer
             chunker_registry: Optional custom chunker registry (Phase 2)
 
         Returns:
@@ -176,6 +184,8 @@ class AppFactory:
             file_handler=file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            query_config=query_config,
+            llm_configurer=llm_configurer,
             chunker_registry=chunker_registry,
         )
 
@@ -258,6 +268,8 @@ class TestAppFactory(AppFactory):
         file_handler=None,
         chunking_config=None,
         file_filter_config=None,
+        query_config=None,
+        llm_configurer=None,
     ) -> IndexingOrchestrator:
         """Create orchestrator for testing with optional mock dependencies.
 
@@ -270,6 +282,8 @@ class TestAppFactory(AppFactory):
             file_handler: Optional mock file handler
             chunking_config: Optional mock chunking config
             file_filter_config: Optional mock file filter config
+            query_config: Optional mock query config
+            llm_configurer: Optional mock LLM configurer
 
         Returns:
             IndexingOrchestrator suitable for testing
@@ -292,6 +306,9 @@ class TestAppFactory(AppFactory):
         if file_filter_config is None:
             file_filter_config = FileFilterConfig.default()
 
+        if query_config is None:
+            query_config = QueryConfig.default()
+
         return AppFactory.create_orchestrator_with_custom_deps(
             index_name=index_name,
             embedding_factory=embedding_factory,
@@ -299,4 +316,6 @@ class TestAppFactory(AppFactory):
             file_handler=file_handler,
             chunking_config=chunking_config,
             file_filter_config=file_filter_config,
+            query_config=query_config,
+            llm_configurer=llm_configurer,
         )

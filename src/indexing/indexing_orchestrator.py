@@ -23,10 +23,14 @@ from llama_index.core import (
 
 from config.chunking_config import ChunkingConfig
 from config.file_filter_config import FileFilterConfig
+from config.query_config import QueryConfig
 from embedding.embedding_factory import EmbeddingFactory
 from file_handlers import FileHandler
 from code_chunking import CodeAwareNodeParser
+from code_query_engine import CodeQueryEngine
+from free_query_mode import FreeQueryEngine
 from loading.document_loader import DocumentLoader
+from llm.llm_configurer import LLMConfigurer
 from strategies.chunking.registry import ChunkerRegistry
 
 
@@ -56,6 +60,8 @@ class IndexingOrchestrator:
         file_handler: FileHandler,
         chunking_config: ChunkingConfig,
         file_filter_config: FileFilterConfig,
+        query_config: QueryConfig,
+        llm_configurer: LLMConfigurer | None = None,
         chunker_registry: ChunkerRegistry | None = None,
     ):
         """Initialize orchestrator with dependencies.
@@ -67,6 +73,8 @@ class IndexingOrchestrator:
             file_handler: Handler for file operations
             chunking_config: Configuration for code chunking
             file_filter_config: Configuration for file filtering
+            query_config: Configuration for query execution
+            llm_configurer: Optional LLM configurer (required for AI query mode)
             chunker_registry: Optional registry for chunking strategies (Phase 2)
         """
         self.index_name = index_name
@@ -78,6 +86,8 @@ class IndexingOrchestrator:
         self.file_handler = file_handler
         self.chunking_config = chunking_config
         self.file_filter_config = file_filter_config
+        self.query_config = query_config
+        self.llm_configurer = llm_configurer
         self.chunker_registry = chunker_registry if chunker_registry is not None else ChunkerRegistry()
 
         # Index state
@@ -427,33 +437,123 @@ class IndexingOrchestrator:
             print(f"   Excluding: {', '.join(exclude_patterns)}")
 
     # ========================================================================
-    # Query Interface (Placeholder)
+    # Query Interface
     # ========================================================================
 
     def query(
         self,
         question: str,
         top_k: int | None = None,
-        similarity_threshold: float | None = None,
-        use_llm: bool = True,
-    ):
-        """Query the index.
+        language: str | None = None,
+        category: str | None = None,
+    ) -> None:
+        """Query the index with code-aware search using LLM.
 
-        Note: Full implementation requires QueryConfig and query engines.
-        This is a placeholder to maintain compatibility with existing interface.
+        This method uses LLM for response generation (AI mode).
+        Requires LLM configuration (llm_configurer must be provided).
 
         Args:
-            question: Query question
-            top_k: Number of top results to return
-            similarity_threshold: Minimum similarity score
-            use_llm: Whether to use LLM for response generation
+            question: Question to ask
+            top_k: Number of relevant documents to retrieve (uses config default if None)
+            language: Optional filter by programming language (e.g., 'python', 'javascript')
+            category: Optional filter by category (e.g., 'code', 'documentation')
 
         Raises:
             AssertionError: If index is not loaded
-            NotImplementedError: This is a placeholder
+            ValueError: If LLM is not configured
         """
-        assert self.index is not None, "Index must be loaded before querying"
-        raise NotImplementedError(
-            "Query implementation requires QueryConfig and query engines. "
-            "Use existing DocumentIndexer.query() or implement QueryOrchestrator."
-        )
+        # Ensure index is loaded
+        if self.index is None:
+            if not self.load_existing_index():
+                print("[X] No index available. Please index documents first.")
+                return
+
+        assert self.index is not None, "Index must be loaded"
+
+        # Ensure LLM is configured for AI mode
+        if self.llm_configurer is None:
+            raise ValueError(
+                "LLM configuration required for AI query mode. "
+                "Use free_query() for retrieval-only mode (no LLM)."
+            )
+
+        # Configure LLM if not already done
+        if Settings.llm is None:
+            self.llm_configurer.configure()
+
+        # Determine top_k
+        top_k_value: int = top_k if top_k is not None else self.query_config.code_similarity_top_k
+
+        print(f"\n[?] Query: {question}")
+        if language:
+            print(f"   Language filter: {language}")
+        if category:
+            print(f"   Category filter: {category}")
+        print(f"   Retrieving top {top_k_value} relevant sources...")
+
+        try:
+            # Create code-aware query engine
+            code_query_engine = CodeQueryEngine(self.index, self.query_config)
+            query_engine = code_query_engine.create_query_engine(
+                similarity_top_k=top_k_value,
+                language_filter=language,
+                category_filter=category,
+            )
+
+            print("\n... Thinking...")
+            response = query_engine.query(question)
+
+            # Format and display response with enhanced sources
+            formatted = code_query_engine.format_response_with_sources(response, top_k_value)
+            print(f"\n{formatted}\n")
+
+        except Exception as e:
+            print(f"\n[X] Query failed: {e}")
+            debug_log(f"Error details: {str(e)}")
+            raise
+
+    def free_query(self, question: str, top_k: int | None = None) -> None:
+        """Query the index with FREE retrieval-only mode (no LLM costs).
+
+        This method uses only local vector search with embeddings.
+        No LLM API calls are made, so there are ZERO costs.
+
+        Args:
+            question: Question to search for
+            top_k: Number of relevant documents to retrieve (uses config default if None)
+
+        Raises:
+            AssertionError: If index is not loaded
+        """
+        # Ensure index is loaded
+        if self.index is None:
+            if not self.load_existing_index():
+                print("[X] No index available. Please index documents first.")
+                return
+
+        assert self.index is not None, "Index must be loaded"
+
+        # Determine top_k
+        top_k_value: int = top_k if top_k is not None else self.query_config.code_similarity_top_k
+
+        print(f"\n[?] Query (FREE MODE): {question}")
+        print(f"   Retrieving top {top_k_value} relevant sources...")
+        print(f"   💰 Cost: $0.00 (No LLM calls)")
+
+        try:
+            # Create FREE query engine (no LLM)
+            # Note: FreeQueryEngine expects IndexerConfig, but we pass query_config
+            # which has the required code_similarity_top_k attribute
+            free_engine = FreeQueryEngine(self.index, self.query_config)  # type: ignore
+
+            print("\n... Searching vector database...")
+            results = free_engine.query(question, top_k_value)
+
+            # Format and display results
+            formatted = free_engine.format_results(results)
+            print(f"\n{formatted}\n")
+
+        except Exception as e:
+            print(f"\n[X] Query failed: {e}")
+            debug_log(f"Error details: {str(e)}")
+            raise
