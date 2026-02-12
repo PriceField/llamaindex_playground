@@ -92,6 +92,7 @@ class IndexingOrchestrator:
 
         # Index state
         self.index: VectorStoreIndex | None = None
+        self._llm_configured = False  # Track if LLM has been configured
 
     def setup_embeddings_and_parser(self) -> None:
         """Setup embeddings and code-aware node parser in LlamaIndex Settings.
@@ -477,9 +478,10 @@ class IndexingOrchestrator:
                 "Use free_query() for retrieval-only mode (no LLM)."
             )
 
-        # Configure LLM if not already done
-        if Settings.llm is None:
+        # Configure LLM once
+        if not self._llm_configured:
             self.llm_configurer.configure()
+            self._llm_configured = True
 
         # Determine top_k
         top_k_value: int = top_k if top_k is not None else self.query_config.code_similarity_top_k
