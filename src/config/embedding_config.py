@@ -27,6 +27,7 @@ class EmbeddingConfig:
     embed_api_base: str
     embed_openai_model: str
     embed_model_dimension: int = 1024
+    embed_device: str = "cpu"
 
     def __post_init__(self) -> None:
         """Validate configuration."""
@@ -76,6 +77,7 @@ class EmbeddingConfig:
             embed_api_base=EnvParser.parse_str("EMBED_API_BASE", ""),
             embed_openai_model=EnvParser.parse_str("EMBED_OPENAI_MODEL", "text-embedding-ada-002"),
             embed_model_dimension=EnvParser.parse_int("EMBED_MODEL_DIMENSION", 1024),
+            embed_device=EnvParser.parse_str("EMBED_DEVICE", "cpu"),
         )
 
     @classmethod
@@ -92,6 +94,7 @@ class EmbeddingConfig:
             embed_api_base="",
             embed_openai_model="",
             embed_model_dimension=1024,
+            embed_device="cpu",
         )
 
     @classmethod
@@ -131,4 +134,5 @@ class EmbeddingConfig:
             embed_api_base=api_base,
             embed_openai_model=model,
             embed_model_dimension=dimension,
+            embed_device="cpu",  # OpenAI embeddings don't use local device
         )

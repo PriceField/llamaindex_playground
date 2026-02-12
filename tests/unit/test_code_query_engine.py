@@ -8,14 +8,10 @@ from code_query_engine import CodeQueryEngine
 class TestCodeQueryEngine:
     """Test suite for CodeQueryEngine class."""
 
-    @patch('code_query_engine.get_response_synthesizer')
     @patch('code_query_engine.VectorIndexRetriever')
-    @patch('code_query_engine.RetrieverQueryEngine')
     def test_create_query_engine_with_defaults(
         self,
-        mock_retriever_query_engine,
         mock_retriever_cls,
-        mock_synthesizer,
         query_config
     ):
         """Test creating query engine with default parameters."""
@@ -23,7 +19,7 @@ class TestCodeQueryEngine:
 
         engine = CodeQueryEngine(mock_index, query_config)
 
-        # The method creates a RetrieverQueryEngine internally
+        # The method creates a CustomQueryEngine internally
         query_engine = engine.create_query_engine()
 
         # Verify VectorIndexRetriever was called with correct top_k (from fixture: 5)
@@ -31,14 +27,10 @@ class TestCodeQueryEngine:
         call_kwargs = mock_retriever_cls.call_args[1]
         assert call_kwargs['similarity_top_k'] == 5
 
-    @patch('code_query_engine.get_response_synthesizer')
     @patch('code_query_engine.VectorIndexRetriever')
-    @patch('code_query_engine.RetrieverQueryEngine')
     def test_create_query_engine_with_custom_params(
         self,
-        mock_retriever_query_engine,
         mock_retriever_cls,
-        mock_synthesizer,
         query_config
     ):
         """Test creating query engine with custom parameters."""
@@ -59,11 +51,12 @@ class TestCodeQueryEngine:
         mock_index = MagicMock()
 
         engine = CodeQueryEngine(mock_index, query_config)
-        prompt_template = engine._get_code_qa_prompt()
+        prompt_template = engine._get_code_qa_prompt_string()
 
         # Verify prompt contains code-specific instructions
         assert prompt_template is not None
-        assert "code" in prompt_template.template.lower() or "source" in prompt_template.template.lower()
+        assert isinstance(prompt_template, str)
+        assert "code" in prompt_template.lower() or "source" in prompt_template.lower()
 
     def test_get_code_qa_prompt_without_source_context(self):
         """Test QA prompt generation with source context disabled."""
@@ -78,10 +71,11 @@ class TestCodeQueryEngine:
         mock_index = MagicMock()
 
         engine = CodeQueryEngine(mock_index, config)
-        prompt_template = engine._get_code_qa_prompt()
+        prompt_template = engine._get_code_qa_prompt_string()
 
         # Prompt should still be created
         assert prompt_template is not None
+        assert isinstance(prompt_template, str)
 
     def test_format_response_with_sources(self, query_config):
         """Test formatting response with source information."""
@@ -90,7 +84,7 @@ class TestCodeQueryEngine:
 
         # Create mock response with source nodes
         mock_response = MagicMock()
-        mock_response.__str__ = MagicMock(return_value="This is the answer to your query.")
+        mock_response.response = "This is the answer to your query."
 
         # Create mock source nodes
         mock_node1 = MagicMock()
@@ -129,7 +123,7 @@ class TestCodeQueryEngine:
         engine = CodeQueryEngine(mock_index, query_config)
 
         mock_response = MagicMock()
-        mock_response.__str__ = MagicMock(return_value="Simple response")
+        mock_response.response = "Simple response"
         mock_response.source_nodes = []
 
         formatted = engine.format_response_with_sources(mock_response)

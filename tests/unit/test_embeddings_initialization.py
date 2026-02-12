@@ -21,8 +21,12 @@ class TestEmbeddingFactory:
 
         factory.create()
 
-        # Verify HuggingFaceEmbedding was called with default model
-        mock_hf_embed.assert_called_once_with(model_name="BAAI/bge-large-en-v1.5")
+        # Verify HuggingFaceEmbedding was called with default model and device
+        mock_hf_embed.assert_called_once_with(
+            model_name="BAAI/bge-large-en-v1.5",
+            device="cpu",
+            trust_remote_code=False
+        )
 
     @patch('embedding.embedding_factory.HuggingFaceEmbedding')
     def test_create_huggingface_embeddings_custom(self, mock_hf_embed):
@@ -38,9 +42,32 @@ class TestEmbeddingFactory:
 
         factory.create()
 
-        # Verify custom model name
+        # Verify custom model name and device
         mock_hf_embed.assert_called_once_with(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu",
+            trust_remote_code=False
+        )
+
+    @patch('embedding.embedding_factory.HuggingFaceEmbedding')
+    def test_create_huggingface_embeddings_nomic_trust_remote_code(self, mock_hf_embed):
+        """Test HuggingFace embeddings with Nomic model requiring trust_remote_code."""
+        config = EmbeddingConfig(
+            embed_model_type="local",
+            embed_model_name="nomic-ai/nomic-embed-text-v1.5",
+            embed_api_key="",
+            embed_api_base="",
+            embed_openai_model=""
+        )
+        factory = EmbeddingFactory(config)
+
+        factory.create()
+
+        # Verify Nomic model is created with trust_remote_code=True
+        mock_hf_embed.assert_called_once_with(
+            model_name="nomic-ai/nomic-embed-text-v1.5",
+            device="cpu",
+            trust_remote_code=True
         )
 
     @patch('llama_index.embeddings.openai.OpenAIEmbedding')
@@ -128,8 +155,12 @@ class TestEmbeddingFactory:
 
         factory.create()
 
-        # Should use HuggingFace with default model
-        mock_hf_embed.assert_called_once_with(model_name="BAAI/bge-large-en-v1.5")
+        # Should use HuggingFace with default model and device
+        mock_hf_embed.assert_called_once_with(
+            model_name="BAAI/bge-large-en-v1.5",
+            device="cpu",
+            trust_remote_code=False
+        )
 
     @patch.dict(os.environ, {}, clear=True)
     @patch('embedding.embedding_factory.HuggingFaceEmbedding')
@@ -140,8 +171,12 @@ class TestEmbeddingFactory:
 
         factory.create()
 
-        # Should default to HuggingFace
-        mock_hf_embed.assert_called_once_with(model_name="BAAI/bge-large-en-v1.5")
+        # Should default to HuggingFace with device
+        mock_hf_embed.assert_called_once_with(
+            model_name="BAAI/bge-large-en-v1.5",
+            device="cpu",
+            trust_remote_code=False
+        )
 
     def test_invalid_embedding_type_raises(self):
         """Test that invalid embedding type raises ValueError."""

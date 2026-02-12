@@ -38,3 +38,9 @@ huggingface_cache/
 .DS_Store
 Thumbs.db
 *.egg-info/
+
+# Temporary test/verification scripts
+test_*.py
+verify_*.py
+quick_*.py
+*.query

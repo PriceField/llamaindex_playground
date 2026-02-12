@@ -49,9 +49,38 @@ class EmbeddingFactory:
             HuggingFaceEmbedding: Configured HuggingFace embeddings
         """
         model_name = self.config.embed_model_name
-        print(f"[OK] Embeddings configured: HuggingFace - {model_name}")
+        device = self.config.embed_device
 
-        return HuggingFaceEmbedding(model_name=model_name)
+        # Validate GPU availability if GPU requested
+        if device.startswith("cuda"):
+            try:
+                import torch
+                if not torch.cuda.is_available():
+                    print(f"[!] CUDA not available, falling back to CPU")
+                    device = "cpu"
+                else:
+                    print(f"[OK] Using GPU: {torch.cuda.get_device_name(0)}")
+            except ImportError:
+                print(f"[!] PyTorch not found, falling back to CPU")
+                device = "cpu"
+
+        print(f"[OK] Embeddings configured: HuggingFace - {model_name} (device: {device})")
+
+        # Models requiring trust_remote_code
+        trust_remote_models = [
+            "nomic-ai/nomic-embed-text-v1.5",
+            "nomic-ai/nomic-embed-text-v1",
+            "nomic-ai/nomic-bert-2048"
+        ]
+
+        # Check if model requires trust_remote_code
+        trust_remote_code = any(model in model_name for model in trust_remote_models)
+
+        return HuggingFaceEmbedding(
+            model_name=model_name,
+            device=device,
+            trust_remote_code=trust_remote_code
+        )
 
     def _create_openai(self) -> "OpenAIEmbedding":
         """Create OpenAI embedding model.
