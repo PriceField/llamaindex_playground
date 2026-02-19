@@ -240,6 +240,25 @@ class IndexingOrchestrator:
     # Batch Processing
     # ========================================================================
 
+    def _get_gpu_memory_info(self) -> dict[str, float]:
+        """Get current GPU memory usage.
+
+        Returns:
+            Dictionary with 'used_mb' and 'free_mb' keys, or empty dict if CUDA unavailable
+        """
+        try:
+            import torch
+            if torch.cuda.is_available():
+                used_mb = torch.cuda.memory_allocated() / 1024 / 1024
+                reserved_mb = torch.cuda.memory_reserved() / 1024 / 1024
+                return {
+                    "used_mb": used_mb,
+                    "reserved_mb": reserved_mb,
+                }
+        except ImportError:
+            pass
+        return {}
+
     def process_file_batch(
         self,
         batch_files: list[str],
@@ -261,6 +280,10 @@ class IndexingOrchestrator:
             AssertionError: If index is not initialized
         """
         assert self.index is not None, "Index must be initialized before processing batches"
+
+        # Monitor GPU memory before batch
+        gpu_before = self._get_gpu_memory_info()
+        batch_start = time.time()
 
         # Process each file in the batch
         for file_path in batch_files:
@@ -294,6 +317,33 @@ class IndexingOrchestrator:
 
         # Save index after batch
         self.save_index()
+
+        # Monitor GPU memory after batch and report performance
+        batch_elapsed = time.time() - batch_start
+        gpu_after = self._get_gpu_memory_info()
+
+        # Print batch performance metrics
+        if gpu_before and gpu_after:
+            gpu_delta = gpu_after["used_mb"] - gpu_before["used_mb"]
+            print(f"   [⏱️ {batch_elapsed:.1f}s | GPU: {gpu_after['used_mb']:.0f}MB (+{gpu_delta:.0f}MB)]")
+        else:
+            print(f"   [⏱️ {batch_elapsed:.1f}s]")
+
+        # Clear GPU cache to prevent memory accumulation
+        try:
+            import torch
+            if torch.cuda.is_available():
+                # Force garbage collection before clearing cache
+                import gc
+                gc.collect()
+
+                # Clear all GPU caches
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()  # Wait for all GPU operations to finish
+
+                debug_log("GPU cache cleared and synchronized")
+        except ImportError:
+            pass
 
     # ========================================================================
     # High-Level Indexing Workflow
