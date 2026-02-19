@@ -25,7 +25,8 @@ class TestEmbeddingFactory:
         mock_hf_embed.assert_called_once_with(
             model_name="BAAI/bge-large-en-v1.5",
             device="cpu",
-            trust_remote_code=False
+            trust_remote_code=False,
+            truncate_dim=1024
         )
 
     @patch('embedding.embedding_factory.HuggingFaceEmbedding')
@@ -46,7 +47,8 @@ class TestEmbeddingFactory:
         mock_hf_embed.assert_called_once_with(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             device="cpu",
-            trust_remote_code=False
+            trust_remote_code=False,
+            truncate_dim=1024
         )
 
     @patch('embedding.embedding_factory.HuggingFaceEmbedding')
@@ -67,7 +69,8 @@ class TestEmbeddingFactory:
         mock_hf_embed.assert_called_once_with(
             model_name="nomic-ai/nomic-embed-text-v1.5",
             device="cpu",
-            trust_remote_code=True
+            trust_remote_code=True,
+            truncate_dim=1024
         )
 
     @patch('llama_index.embeddings.openai.OpenAIEmbedding')
@@ -159,7 +162,8 @@ class TestEmbeddingFactory:
         mock_hf_embed.assert_called_once_with(
             model_name="BAAI/bge-large-en-v1.5",
             device="cpu",
-            trust_remote_code=False
+            trust_remote_code=False,
+            truncate_dim=1024
         )
 
     @patch.dict(os.environ, {}, clear=True)
@@ -175,7 +179,8 @@ class TestEmbeddingFactory:
         mock_hf_embed.assert_called_once_with(
             model_name="BAAI/bge-large-en-v1.5",
             device="cpu",
-            trust_remote_code=False
+            trust_remote_code=False,
+            truncate_dim=1024
         )
 
     def test_invalid_embedding_type_raises(self):

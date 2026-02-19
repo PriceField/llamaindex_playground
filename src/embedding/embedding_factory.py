@@ -50,6 +50,7 @@ class EmbeddingFactory:
         """
         model_name = self.config.embed_model_name
         device = self.config.embed_device
+        dimension = self.config.embed_model_dimension
 
         # Validate GPU availability if GPU requested
         if device.startswith("cuda"):
@@ -64,7 +65,7 @@ class EmbeddingFactory:
                 print(f"[!] PyTorch not found, falling back to CPU")
                 device = "cpu"
 
-        print(f"[OK] Embeddings configured: HuggingFace - {model_name} (device: {device})")
+        print(f"[OK] Embeddings configured: HuggingFace - {model_name} (device: {device}, dimension: {dimension})")
 
         # Models requiring trust_remote_code
         trust_remote_models = [
@@ -76,11 +77,19 @@ class EmbeddingFactory:
         # Check if model requires trust_remote_code
         trust_remote_code = any(model in model_name for model in trust_remote_models)
 
-        return HuggingFaceEmbedding(
-            model_name=model_name,
-            device=device,
-            trust_remote_code=trust_remote_code
-        )
+        # Build kwargs for HuggingFaceEmbedding
+        kwargs = {
+            "model_name": model_name,
+            "device": device,
+            "trust_remote_code": trust_remote_code,
+        }
+
+        # Add truncate_dim if dimension is specified
+        # This allows truncating embeddings to a specific dimension (useful for Matryoshka models like Qwen3)
+        if dimension and dimension > 0:
+            kwargs["truncate_dim"] = dimension
+
+        return HuggingFaceEmbedding(**kwargs)
 
     def _create_openai(self) -> "OpenAIEmbedding":
         """Create OpenAI embedding model.
@@ -110,8 +119,15 @@ class EmbeddingFactory:
         if self.config.embed_api_base:
             kwargs["api_base"] = self.config.embed_api_base
 
+        # Add dimensions if specified (only works with text-embedding-3-* models)
+        # For older models like ada-002, this parameter is ignored
+        if self.config.embed_model_dimension and self.config.embed_model_dimension > 0:
+            kwargs["dimensions"] = self.config.embed_model_dimension
+
         print(f"[OK] Embeddings configured: OpenAI - {self.config.embed_openai_model}")
         if self.config.embed_api_base:
             print(f"    Using custom endpoint: {self.config.embed_api_base}")
+        if self.config.embed_model_dimension:
+            print(f"    Dimension: {self.config.embed_model_dimension}")
 
         return OpenAIEmbedding(**kwargs)
