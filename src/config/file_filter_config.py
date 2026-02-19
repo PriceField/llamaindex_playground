@@ -65,7 +65,7 @@ class FileFilterConfig:
             ),
             default_exclude_patterns=EnvParser.parse_list(
                 "DEFAULT_EXCLUDE_PATTERNS",
-                "node_modules,__pycache__,.git,dist,build,target,.venv,venv,.pytest_cache,.mypy_cache,*.pyc,*.pyo,*.so,*.dll,*.exe"
+                ".git,node_modules,dist,build,target,__pycache__,.venv,venv,ENV,env,.pytest_cache,.mypy_cache,*.pyc,*.pyo,*.egg-info,.vscode,.idea,*.swp,*.swo,.claude,.DS_Store,Thumbs.db,.cache,storage,*.so,*.dll,*.exe,.env"
             ),
         )
 
@@ -82,8 +82,24 @@ class FileFilterConfig:
                 "java", "go", "rust", "cpp", "c", "ruby", "php"
             ],
             default_exclude_patterns=[
-                "node_modules", "__pycache__", ".git", "dist", "build", "target",
-                ".venv", "venv", ".pytest_cache", ".mypy_cache",
-                "*.pyc", "*.pyo", "*.so", "*.dll", "*.exe"
+                # Version control
+                ".git",
+                # Build artifacts & dependencies
+                "node_modules", "dist", "build", "target",
+                # Python environments & caches
+                "__pycache__", ".venv", "venv", "ENV", "env",
+                ".pytest_cache", ".mypy_cache", "*.pyc", "*.pyo", "*.egg-info",
+                # IDE & Editor files
+                ".vscode", ".idea", "*.swp", "*.swo",
+                # AI/LLM tools
+                ".claude",
+                # OS files
+                ".DS_Store", "Thumbs.db",
+                # General caches & storage
+                ".cache", "storage",
+                # Binary files
+                "*.so", "*.dll", "*.exe",
+                # Sensitive files
+                ".env",
             ],
         )

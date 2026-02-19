@@ -374,28 +374,33 @@ def test_full_workflow_with_indexer_config():
 
 def test_no_regressions_in_property_values():
     """Test that property values match expected defaults from environment."""
-    config = IndexerConfig()
+    import os
+    from unittest.mock import patch
 
-    # These values should match the defaults in EnvParser
-    assert config.code_chunk_size == 512
-    assert config.code_chunk_overlap == 50
-    assert config.doc_chunk_size == 1024
-    assert config.doc_chunk_overlap == 20
-    assert config.preserve_code_structure is True
-    assert config.include_line_numbers is True
-    assert config.extract_functions is True
-    assert config.extract_classes is True
-    assert config.extract_imports is True
-    assert config.code_similarity_top_k == 5
-    assert config.use_metadata_filters is True
-    assert config.include_source_context is True
-    assert config.embed_model_type == "local"
-    # Note: Default embed_model_name in code is "BAAI/bge-large-en-v1.5"
-    # but .env.example may have different value
-    assert isinstance(config.embed_model_name, str) and len(config.embed_model_name) > 0
+    # Clear environment variables to test default values
+    with patch.dict(os.environ, {}, clear=True):
+        config = IndexerConfig()
 
-    # Verify supported_languages and exclude_patterns are not empty
-    assert len(config.supported_languages) > 0
-    assert "python" in config.supported_languages
+        # These values should match the defaults in EnvParser
+        assert config.code_chunk_size == 512
+        assert config.code_chunk_overlap == 50
+        assert config.doc_chunk_size == 1024
+        assert config.doc_chunk_overlap == 20
+        assert config.preserve_code_structure is True
+        assert config.include_line_numbers is True
+        assert config.extract_functions is True
+        assert config.extract_classes is True
+        assert config.extract_imports is True
+        assert config.code_similarity_top_k == 5
+        assert config.use_metadata_filters is True
+        assert config.include_source_context is True
+        assert config.embed_model_type == "local"
+        # Note: Default embed_model_name in code is "BAAI/bge-large-en-v1.5"
+        # but .env.example may have different value
+        assert isinstance(config.embed_model_name, str) and len(config.embed_model_name) > 0
+
+        # Verify supported_languages and exclude_patterns are not empty
+        assert len(config.supported_languages) > 0
+        assert "python" in config.supported_languages
     assert len(config.default_exclude_patterns) > 0
     assert "node_modules" in config.default_exclude_patterns

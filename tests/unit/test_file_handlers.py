@@ -64,6 +64,77 @@ class TestFileHandler:
         # Default pattern should still work
         assert handler.should_index_file("node_modules/lib.js", user_exclude=["*backup*"]) is False
 
+    def test_should_exclude_env_files(
+        self, file_filter_config, language_detector, file_categorizer
+    ):
+        """Test that .env files are excluded (security critical)."""
+        handler = FileHandler(file_filter_config, language_detector, file_categorizer)
+
+        # .env files should be excluded to prevent indexing secrets
+        assert handler.should_index_file(".env") is False
+        assert handler.should_index_file("config/.env") is False
+        assert handler.should_index_file(".env.local") is False
+        assert handler.should_index_file("project/.env.production") is False
+
+    def test_should_exclude_ide_directories(
+        self, file_filter_config, language_detector, file_categorizer
+    ):
+        """Test that IDE configuration directories are excluded."""
+        handler = FileHandler(file_filter_config, language_detector, file_categorizer)
+
+        # VS Code
+        assert handler.should_index_file(".vscode/settings.json") is False
+        assert handler.should_index_file("project/.vscode/launch.json") is False
+
+        # IntelliJ/PyCharm
+        assert handler.should_index_file(".idea/workspace.xml") is False
+        assert handler.should_index_file("project/.idea/modules.xml") is False
+
+        # Vim swap files
+        assert handler.should_index_file("main.py.swp") is False
+        assert handler.should_index_file("config.json.swo") is False
+
+    def test_should_exclude_claude_directory(
+        self, file_filter_config, language_detector, file_categorizer
+    ):
+        """Test that .claude directory is excluded."""
+        handler = FileHandler(file_filter_config, language_detector, file_categorizer)
+
+        assert handler.should_index_file(".claude/config.json") is False
+        assert handler.should_index_file("project/.claude/memory.md") is False
+
+    def test_should_exclude_storage_directory(
+        self, file_filter_config, language_detector, file_categorizer
+    ):
+        """Test that storage/ directory is excluded (prevents indexing the index)."""
+        handler = FileHandler(file_filter_config, language_detector, file_categorizer)
+
+        assert handler.should_index_file("storage/index.json") is False
+        assert handler.should_index_file("project/storage/vectors.bin") is False
+
+    def test_should_exclude_os_files(
+        self, file_filter_config, language_detector, file_categorizer
+    ):
+        """Test that OS-specific files are excluded."""
+        handler = FileHandler(file_filter_config, language_detector, file_categorizer)
+
+        # macOS
+        assert handler.should_index_file(".DS_Store") is False
+        assert handler.should_index_file("folder/.DS_Store") is False
+
+        # Windows
+        assert handler.should_index_file("Thumbs.db") is False
+        assert handler.should_index_file("images/Thumbs.db") is False
+
+    def test_should_exclude_python_egg_info(
+        self, file_filter_config, language_detector, file_categorizer
+    ):
+        """Test that Python .egg-info directories are excluded."""
+        handler = FileHandler(file_filter_config, language_detector, file_categorizer)
+
+        assert handler.should_index_file("mypackage.egg-info/PKG-INFO") is False
+        assert handler.should_index_file("dist/mylib.egg-info/SOURCES.txt") is False
+
     def test_matches_pattern_with_wildcards(
         self, file_filter_config, language_detector, file_categorizer
     ):

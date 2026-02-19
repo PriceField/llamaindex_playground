@@ -52,7 +52,27 @@ def file_filter_config():
     """Create a real FileFilterConfig for testing."""
     return FileFilterConfig(
         supported_languages=["python", "javascript", "java", "go"],
-        default_exclude_patterns=["node_modules", "__pycache__", ".git"],
+        default_exclude_patterns=[
+            # Version control
+            ".git",
+            # Build artifacts & dependencies
+            "node_modules", "dist", "build", "target",
+            # Python environments & caches
+            "__pycache__", ".venv", "venv", "ENV", "env",
+            ".pytest_cache", ".mypy_cache", "*.pyc", "*.pyo", "*.egg-info",
+            # IDE & Editor files
+            ".vscode", ".idea", "*.swp", "*.swo",
+            # AI/LLM tools
+            ".claude",
+            # OS files
+            ".DS_Store", "Thumbs.db",
+            # General caches & storage
+            ".cache", "storage",
+            # Binary files
+            "*.so", "*.dll", "*.exe",
+            # Sensitive files
+            ".env",
+        ],
     )
 
 
